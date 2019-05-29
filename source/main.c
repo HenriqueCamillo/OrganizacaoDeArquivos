@@ -89,9 +89,6 @@ int main() {
             // Realiza a funcionalidade
             ordenarRegistros(nomeDoArquivo, nomeDoArquivoDeSaida);
 
-            // Escreve o arquivo binário na tela
-            binarioNaTela2(nomeDoArquivoDeSaida);
-
             // Libera memória
             free(nomeDoArquivo);
             free(nomeDoArquivoDeSaida);

@@ -80,12 +80,12 @@ int tamanhoRegistro(sRegistro* registro) {
     // Para cada um não nulo, adiciona o tamanho da string (com \0), o tamanho da tag, e o tamanho do indicador de tamanho do campo à conta
     tamanhoDaString = strlen(registro->nomeServidor);
     if (tamanhoDaString != 0) {
-        tamanhoDoRegistro+= tamanhoDaString + 2 * sizeof(char) + sizeof(int);
+        tamanhoDoRegistro += tamanhoDaString + 2 * sizeof(char) + sizeof(int);
     }
 
     tamanhoDaString = strlen(registro->cargoServidor);
     if (tamanhoDaString != 0) {
-        tamanhoDoRegistro+= tamanhoDaString + 2 * sizeof(char) + sizeof(int);
+        tamanhoDoRegistro += tamanhoDaString + 2 * sizeof(char) + sizeof(int);
     }
 
     return tamanhoDoRegistro;
@@ -353,7 +353,7 @@ int escreverRegistro(sRegistro* registro, FILE* bin, sPaginaDeDisco* paginaDeDis
 
     // Verifica se o registro cabe na página de disco
     // Foram adicionados o tamanho do campo "removido" e do indicador de tamanho do registro ao tamanho do registro.
-    if (registro->tamanho + sizeof(char) + sizeof(int) + paginaDeDisco->bytes >= PAGINA_DE_DISCO_TAM) { 
+    if (registro->tamanho + sizeof(char) + sizeof(int) + paginaDeDisco->bytes > PAGINA_DE_DISCO_TAM) { 
 
         // Escreve arrobas até que preencha a página, e conta quantos foram escritos
         int i;
@@ -1786,6 +1786,7 @@ sRegistro** lerArquivoBinario(FILE* bin, int* quantidadeDeRegistros) {
     
     // Passa por todo o arquivo, salvando os registros lidos em um array
     while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicao)) {
+
         // Copia o registro lido para uma outra variável
         sRegistro* registroCopia = criarRegistro();
         copiarRegistro(registroCopia, registro);
@@ -1827,6 +1828,9 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
         return;
     }
 
+    // Como não haverá nenhum registro removido, o topo da lista será nulo
+    cabecalho->topoLista = -1;
+
     // Lê todos os registros do arquivo binário e os ordena de acordo com i ID
     int quantidadeDeRegistros;
     sRegistro** registros = lerArquivoBinario(bin, &quantidadeDeRegistros);
@@ -1847,13 +1851,19 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
     // Escreve todos os registros do array no arquivo binário, e já libera a memória alocada por esses regitros
     long int tamanhoDoRegistro = 0;
     for (int i = 0; i < quantidadeDeRegistros; i++) {
+        if (registros[i]->idServidor == 3707135){
+            int a = 0;
+        }
         tamanhoDoRegistro = escreverRegistro(registros[i], novoBin, &paginaDeDisco, tamanhoDoRegistro);
         liberarRegistro(registros[i]);
     }
     free(registros);
-    fclose(novoBin);
 
     // Libera memória alocada
     liberarCabecalho(cabecalho);
     fclose(bin);
+    fclose(novoBin);
+
+    // Escreve o arquivo binário na tela
+    binarioNaTela2(nomeDoArquivoDeSaida);
 }
