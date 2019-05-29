@@ -1,6 +1,8 @@
 //  Autor:
 //  Nome: Henrique Matarazo Camillo
 //  NUSP: 10294943
+//  Nome: Gyovana Mayara Moriyama
+//  NUSP: 10734387
 
 #ifndef FUNCIONALIDADES_H
 #define FUNCIONALIDADES_H
@@ -57,8 +59,17 @@ void atualizacaoDeRegistros();
  * @brief  Lê todos os registros de um arquivo, ordena e escreve em um outro arquivo binário
  * @note   Faz ordenação de forma crescente a partir do ID
  * @param  nomeDoArquivo: Nome do arquivo que contém os registros
- * @param  nomeDoArquivoDeSaida: Nome do que onterá os regitros de forma ordenada
+ * @param  nomeDoArquivoDeSaida: Nome do que conterá os regitros de forma ordenada
  */
 void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
 
+/**
+ * @brief  Realiza o merging de dois arquivos binários e escreve em um outro arquivo binário
+ * @note   Lê os dois arquivos binários e realiza o merging dos registros dos arquivos, comparando pelo ID 
+ * @param  *nomeDoArquivo1: string com o nome do primeiro arquivo 
+ * @param  *nomeDoArquivo2: string com o nome do segundo arquivo
+ * @param  *nomeDoArquivoDeSaida: string com o nome do arquivo que conterá o merging dos registros
+ * @retval None
+ */
+void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida);
 #endif

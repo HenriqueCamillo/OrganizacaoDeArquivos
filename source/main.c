@@ -1,6 +1,8 @@
 //  Autor:
 //  Nome: Henrique Matarazo Camillo
 //  NUSP: 10294943
+//  Nome: Gyovana Mayara Moriyama
+//  NUSP: 10734387
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +15,7 @@ int main() {
     int opcao;
     scanf("%d", &opcao);
     // Parâmetros da funcionalidadades
-    char *nomeDoArquivo, *nomeDoArquivoDeSaida;
+    char *nomeDoArquivo, *nomeDoArquivo2, *nomeDoArquivoDeSaida;
     char *campoBusca, *valorBusca;
 
     // Checa qual foi a opção digitada pelo usuário, lê os parâmetros (dependendo da funcionalidade), e chama a função.
@@ -100,10 +102,36 @@ int main() {
 
         // Funcionalidade 8:
         case 8:
+            //Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivoDeSaida = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            //Lê input
+            scanf("%s %s %s", nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
+
+            mergingRegistros(nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
+
+            //Libera memória    
+            free(nomeDoArquivo);
+            free(nomeDoArquivo2);
+            free(nomeDoArquivoDeSaida);
             break;
 
         // Funcionalidade 9:
         case 9:
+            //Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivoDeSaida = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            //Lê input
+            scanf("%s %s %s", nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
+            
+            //Libera memória    
+            free(nomeDoArquivo);
+            free(nomeDoArquivo2);
+            free(nomeDoArquivoDeSaida);
             break;
 
         // Funcionalidade inválida
