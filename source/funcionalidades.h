@@ -53,4 +53,12 @@ void insercaoDeRegistros();
  */
 void atualizacaoDeRegistros();
 
+/**
+ * @brief  Lê todos os registros de um arquivo, ordena e escreve em um outro arquivo binário
+ * @note   Faz ordenação de forma crescente a partir do ID
+ * @param  nomeDoArquivo: Nome do arquivo que contém os registros
+ * @param  nomeDoArquivoDeSaida: Nome do que onterá os regitros de forma ordenada
+ */
+void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
+
 #endif

@@ -6,13 +6,14 @@
 #include <stdlib.h>
 #include "funcionalidades.h"
 #include "lista.h"
+#include "escreverNaTela.h"
 
 int main() {
     // Digite a opção de funcionalidade
     int opcao;
     scanf("%d", &opcao);
     // Parâmetros da funcionalidadades
-    char *nomeDoArquivo; 
+    char *nomeDoArquivo, *nomeDoArquivoDeSaida;
     char *campoBusca, *valorBusca;
 
     // Checa qual foi a opção digitada pelo usuário, lê os parâmetros (dependendo da funcionalidade), e chama a função.
@@ -74,6 +75,35 @@ int main() {
         // Funcionalidade 6: Atualizar regsitros de um arquivo binário
         case 6:
             atualizacaoDeRegistros();
+            break;
+        
+        // Funcionalidade 7: Ordena os registros de um arquivo binário
+        case 7:
+            // Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivoDeSaida = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            // Lê input
+            scanf("%s %s", nomeDoArquivo, nomeDoArquivoDeSaida);
+
+            // Realiza a funcionalidade
+            ordenarRegistros(nomeDoArquivo, nomeDoArquivoDeSaida);
+
+            // Escreve o arquivo binário na tela
+            binarioNaTela2(nomeDoArquivoDeSaida);
+
+            // Libera memória
+            free(nomeDoArquivo);
+            free(nomeDoArquivoDeSaida);
+
+            break;
+
+        // Funcionalidade 8:
+        case 8:
+            break;
+
+        // Funcionalidade 9:
+        case 9:
             break;
 
         // Funcionalidade inválida

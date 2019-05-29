@@ -9,6 +9,7 @@
 #include "funcionalidades.h"
 #include "lista.h"
 #include "escreverNaTela.h"
+#include "merge_sort.h"
 
 // Tamanho do buffer
 #define BUFFER_TAM 300
@@ -1536,15 +1537,16 @@ void insercaoDeRegistros() {
  * @param  registroOrigem: De onde será copiado
  * @retval None
  */
-void copiaRegistro(sRegistro* registroDestino, sRegistro* registroOrigem) {
+void copiarRegistro(sRegistro* registroDestino, sRegistro* registroOrigem) {
     registroDestino->removido           = registroOrigem->removido;
     registroDestino->idServidor         = registroOrigem->idServidor;
     registroDestino->salarioServidor    = registroOrigem->salarioServidor;
-    registroDestino->telefoneServidor   = registroOrigem->telefoneServidor;
-    registroDestino->nomeServidor       = registroOrigem->nomeServidor;
-    registroDestino->cargoServidor      = registroOrigem->cargoServidor;
     registroDestino->encadeamentoLista  = registroOrigem->encadeamentoLista;
     registroDestino->tamanho            = registroOrigem->tamanho;
+
+    strcpy(registroDestino->telefoneServidor,registroOrigem->telefoneServidor);
+    strcpy(registroDestino->nomeServidor, registroOrigem->nomeServidor);
+    strcpy(registroDestino->cargoServidor, registroOrigem->cargoServidor);
 }
 
 /**
@@ -1742,5 +1744,116 @@ void atualizacaoDeRegistros() {
 
     // Escreve o binário na tela e fecha o arquivo
     binarioNaTela1(bin);
+    fclose(bin);
+}
+
+//!###############################################################################################################################
+
+/**
+ * @brief  Compara os ids de dois registros
+ * @note   Compara subtraindo o o id de registro 1 do id do registro 2
+ * @param  registro1: Registro 1
+ * @param  registro2: Registro 2
+ * @retval Diferença dos ids
+ */
+int compararId(const void* registro1, const void* registro2) {
+    const sRegistro* r1 = *(const sRegistro**) registro1;
+    const sRegistro* r2 = *(const sRegistro**) registro2;
+    return r2->idServidor - r1->idServidor;
+}
+
+/**
+ * @brief  
+ * @note   
+ * @param  bin: Arquivo binário de onde serão lidos os registros
+ * @retval Vetor de ponteiros de registros
+ */
+sRegistro** lerArquivoBinario(FILE* bin, int* quantidadeDeRegistros) {
+    *quantidadeDeRegistros = 0;
+    sRegistro** arrayDeRegistros = NULL;
+
+    // Coloca o cursor na posição do primeiro registro
+    fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    // Cria uma variável para página de disco
+    sPaginaDeDisco paginaDeDisco;
+    paginaDeDisco.bytes = 0;
+    paginaDeDisco.pagina = 2;
+
+    // Cria variável para registro e seus dados
+    sRegistro* registro = criarRegistro();
+    long int posicao;
+    
+    // Passa por todo o arquivo, salvando os registros lidos em um array
+    while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicao)) {
+        // Copia o registro lido para uma outra variável
+        sRegistro* registroCopia = criarRegistro();
+        copiarRegistro(registroCopia, registro);
+
+        // Recalcula o tamanho, para casos em que há lixo no final do registro
+        registroCopia->tamanho = tamanhoRegistro(registroCopia);
+
+        // Aloca espaço para mais um registro
+        arrayDeRegistros = realloc(arrayDeRegistros, (*quantidadeDeRegistros + 1) * sizeof(sRegistro*));
+
+        // Adiciona registro no array e aumenta a quantidade de registros
+        arrayDeRegistros[*quantidadeDeRegistros] = registroCopia;
+        (*quantidadeDeRegistros)++;
+    }
+
+    liberarRegistro(registro);
+    
+    return arrayDeRegistros;
+}
+
+void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
+    // Abre o arquivo binário 
+    FILE* bin = fopen(nomeDoArquivo, "rb");
+
+    // Verifica se foi aberto corretamente
+    if (bin == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Lê o cabeçalho já verificando o status do arquivo
+    sCabecalho* cabecalho = criarCabecalho();
+    if (!lerCabecalhoBin(cabecalho, bin)) {
+        printf("Falha no processamento do arquivo.\n");
+
+        fclose(bin);
+        liberarCabecalho(cabecalho);
+
+        return;
+    }
+
+    // Lê todos os registros do arquivo binário e os ordena de acordo com i ID
+    int quantidadeDeRegistros;
+    sRegistro** registros = lerArquivoBinario(bin, &quantidadeDeRegistros);
+
+    // mergeSort(registros, 0, quantidadeDeRegistros);
+    MS_sort(registros, quantidadeDeRegistros, sizeof(sRegistro*), compararId);
+
+    // Cria variável de página de disco
+    sPaginaDeDisco paginaDeDisco;
+    paginaDeDisco.pagina = 1;
+    paginaDeDisco.bytes = 0;
+
+    // Cria um novo arquivo binário e escreve o cabeçalho nele
+    FILE* novoBin = fopen(nomeDoArquivoDeSaida, "wb");
+    escreverCabecalho(cabecalho, novoBin, &paginaDeDisco);
+
+
+    // Escreve todos os registros do array no arquivo binário, e já libera a memória alocada por esses regitros
+    long int tamanhoDoRegistro = 0;
+    for (int i = 0; i < quantidadeDeRegistros; i++) {
+        tamanhoDoRegistro = escreverRegistro(registros[i], novoBin, &paginaDeDisco, tamanhoDoRegistro);
+        liberarRegistro(registros[i]);
+    }
+    free(registros);
+    fclose(novoBin);
+
+    // Libera memória alocada
+    liberarCabecalho(cabecalho);
     fclose(bin);
 }
