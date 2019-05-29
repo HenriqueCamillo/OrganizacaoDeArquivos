@@ -1,6 +1,8 @@
 //  Autor:
 //  Nome: Henrique Matarazo Camillo
 //  NUSP: 10294943
+//  Nome: Gyovana Mayara Moriyama
+//  NUSP: 10734387
 
 #ifndef LISTA_H
 #define LISTA_H
