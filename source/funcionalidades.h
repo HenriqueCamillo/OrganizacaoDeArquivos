@@ -64,12 +64,15 @@ void atualizacaoDeRegistros();
 void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
 
 /**
- * @brief  Realiza o merging de dois arquivos binários e escreve em um outro arquivo binário
- * @note   Lê os dois arquivos binários e realiza o merging dos registros dos arquivos, comparando pelo ID 
+ * @brief  Realiza o merging ou o matching de dois arquivos binários e escreve em um outro arquivo binário
+ * @note   Lê os dois arquivos binários e realiza o merging dos registros dos arquivos, comparando pelo ID, caso essa seja
+ * a operação pedida (isMerging = true), ou realiza o matching dos registros dos arquivos binários, caso essa seja a operação
+ * pedida (isMerging = false) 
  * @param  *nomeDoArquivo1: string com o nome do primeiro arquivo 
  * @param  *nomeDoArquivo2: string com o nome do segundo arquivo
  * @param  *nomeDoArquivoDeSaida: string com o nome do arquivo que conterá o merging dos registros
+ * @param  isMerging: booleana que indica que é para realizar o merging nos arquivos
  * @retval None
  */
-void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida);
+void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida, bool isMerging);
 #endif

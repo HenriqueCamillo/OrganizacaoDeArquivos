@@ -6,11 +6,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "funcionalidades.h"
 #include "lista.h"
 #include "escreverNaTela.h"
 
 int main() {
+
+    bool isMerging = false;
     // Digite a opção de funcionalidade
     int opcao;
     scanf("%d", &opcao);
@@ -99,6 +102,7 @@ int main() {
 
         // Funcionalidade 8:
         case 8:
+            isMerging = true;
             //Aloca memória
             nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
             nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
@@ -107,7 +111,7 @@ int main() {
             //Lê input
             scanf("%s %s %s", nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
 
-            mergingRegistros(nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
+            mergingAndMatchingRegistros(nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida, isMerging);
 
             //Libera memória    
             free(nomeDoArquivo);
@@ -125,12 +129,38 @@ int main() {
             //Lê input
             scanf("%s %s %s", nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida);
             
+            mergingAndMatchingRegistros(nomeDoArquivo, nomeDoArquivo2, nomeDoArquivoDeSaida, isMerging);
+            
             //Libera memória    
             free(nomeDoArquivo);
             free(nomeDoArquivo2);
             free(nomeDoArquivoDeSaida);
             break;
+        // Funcionalidade 10:
+        case 10:
 
+            break;
+
+        // Funcionalidade 11:
+        case 11:
+
+            break;
+        
+        // Funcionalidade 12:
+        case 12:
+
+            break;
+
+        // Funcionalidade 13:
+        case 13:
+
+            break;
+
+        // Funcionalidade 14:
+        case 14:
+
+            break;
+            
         // Funcionalidade inválida
         default:
             printf("Opção inválida\n");
