@@ -1979,12 +1979,18 @@ void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoAr
 
         if(compararId(&registro2, &registro1) < 0){
            tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
-           if(!recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)) break;
+           if(!recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)) {
+                tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+                break;   
+           }
            registro1->tamanho = tamanhoRegistro(registro1);
         }
         else if(compararId(&registro2, &registro1) > 0){
             tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
-            if(!recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)) break;
+            if(!recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)) {
+                tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+                break;
+            }
             registro2->tamanho = tamanhoRegistro(registro2);
         }
         else{
