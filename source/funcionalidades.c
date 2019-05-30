@@ -1874,6 +1874,8 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
 void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida){
     
     long int posicaoInicial1, posicaoInicial2;
+    int tamanhoDoRegistro = 0;
+    char status;
 
     FILE *bin1 = fopen(nomeDoArquivo1, "rb");
     FILE *bin2 = fopen(nomeDoArquivo2, "rb");
@@ -1895,31 +1897,24 @@ void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoAr
         return;
     }
 
-    // Muda a consistência do arquivo
-    cabecalho->status = '0';
     rewind(bin1);
-    fwrite(&cabecalho->status, sizeof(char), 1, bin1);
-
-    // Coloca o cursosr na posição do primeiro registro
+    // Coloca o cursor na posição do primeiro registro
     fseek(bin1, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
-    //Lê o cabeçalho do segundo arquivo já verificando o status do arquivo
-     sCabecalho* cabecalho2 = criarCabecalho();
-    if (!lerCabecalhoBin(cabecalho2, bin2)) {
+    fread(&status, sizeof(char), 1, bin2);
+    if(status == '0'){
         printf("Falha no processamento do arquivo.\n");
 
+        fclose(bin1);
         fclose(bin2);
-        liberarCabecalho(cabecalho2);
+        liberarCabecalho(cabecalho);
 
         return;
     }
-    // Muda a consistência do arquivo
-    cabecalho2->status = '0';
     rewind(bin2);
-    fwrite(&cabecalho2->status, sizeof(char), 1, bin2);
-
     // Coloca o cursosr na posição do primeiro registro
     fseek(bin2, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
     //abre o arquivo binário que será escrito o merging dos registros e verifica se foi aberto corretamente
     FILE *novoBin = fopen(nomeDoArquivoDeSaida, "wb+");
 
@@ -1928,7 +1923,6 @@ void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoAr
         fclose(bin1);
         fclose(bin2);
         liberarCabecalho(cabecalho);
-        liberarCabecalho(cabecalho2);
     }
 
     // Cria variável de página de disco referente ao primeiro arquivo binário
@@ -1945,24 +1939,41 @@ void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoAr
     sRegistro *registro1 = criarRegistro();
     sRegistro *registro2 = criarRegistro();
 
-    //? caso um binario n tenha coisa e outro tenha     
-    // Lê os primeiros dois registros de ambos os arquivos e checa se existe registros neles
-    if(!recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1) && !recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
-        printf("Falha no processamento do arquivo.\n");
-        fclose(bin1);
-        fclose(bin2);
-        liberarCabecalho(cabecalho);
-        liberarCabecalho(cabecalho2);
-    }
-    registro1->tamanho = tamanhoRegistro(registro1);
-    registro2->tamanho = tamanhoRegistro(registro2);
-
-    int tamanhoDoRegistro = 0;
-
     sPaginaDeDisco paginaDeDiscoNovo;
     paginaDeDiscoNovo.pagina = 1;
     paginaDeDiscoNovo.bytes = 0;
+    cabecalho->status = '0';
     escreverCabecalho(cabecalho, novoBin, &paginaDeDiscoNovo);
+    
+   
+    if(!contemRegistros(bin1)){
+        if(contemRegistros(bin2)){
+             while(recuperarRegistro(registro2, novoBin, &paginaDeDisco2, &posicaoInicial2)){
+                registro2->tamanho = tamanhoRegistro(registro2);
+                tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+            }  
+        }
+        else{
+            printf("Falha no processamento do arquivo.\n");
+
+            fclose(bin1);
+            fclose(bin2);
+            liberarCabecalho(cabecalho);
+
+            return;
+        }
+    }
+    else if(!contemRegistros(bin2)){
+        while(recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
+        registro1->tamanho = tamanhoRegistro(registro1);
+        tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+        }
+    }
+
+    recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1);
+    registro1->tamanho = tamanhoRegistro(registro1);
+    recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2);
+    registro2->tamanho = tamanhoRegistro(registro2);
 
     while(true){
 
@@ -1995,22 +2006,17 @@ void mergingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoAr
         tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
     }
 
-    while(recuperarRegistro(registro1, novoBin, &paginaDeDiscoNovo, &posicaoInicial2)){
+    while(recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
         registro2->tamanho = tamanhoRegistro(registro2);
         tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
     }   
     // Muda a consistência do arquivo
     cabecalho->status = '1';
-    rewind(bin1);
-    fwrite(&cabecalho->status, sizeof(char), 1, bin1);
-    rewind(bin2);
-    fwrite(&cabecalho->status, sizeof(char), 1, bin2);
     rewind(novoBin);
     fwrite(&cabecalho->status, sizeof(char), 1, novoBin);
 
     //Libera memória alocada e escreve o novo binário na tela
     liberarCabecalho(cabecalho);
-    liberarCabecalho(cabecalho2);
     fclose(bin1);
     fclose(bin2);
     binarioNaTela1(novoBin);
