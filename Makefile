@@ -1,6 +1,9 @@
-# Autor:
-# Nome: Henrique Matarazo Camillo
-# NUSP: 10294943
+#  O trabalho anterior escolhido foi o de Henrique Matarazo Camillo 
+#  Autor:
+#   Nome: Henrique Matarazo Camillo
+#   NUSP: 10294943
+#   Nome: Gyovana Mayara Moriyama
+#   NUSP: 10734387
 
 all:
 	gcc source/*.c -o programaTrab3 -g 

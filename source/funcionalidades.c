@@ -1832,8 +1832,9 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
         return;
     }
 
-    // Como não haverá nenhum registro removido, o topo da lista será nulo
+    // Como não haverá nenhum registro removido, o topo da lista será nulo. Coloca o arquivo como inconsistente também
     cabecalho->topoLista = -1;
+    cabecalho->status = '0';
 
     // Lê todos os registros do arquivo binário e os ordena de acordo com i ID
     int quantidadeDeRegistros;
@@ -1862,6 +1863,11 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
         liberarRegistro(registros[i]);
     }
     free(registros);
+
+    // Muda a consistência do arquivo de escrita
+    cabecalho->status = '1';
+    rewind(novoBin);
+    fwrite(&cabecalho->status, sizeof(char), 1, novoBin);
 
     // Libera memória alocada
     liberarCabecalho(cabecalho);
