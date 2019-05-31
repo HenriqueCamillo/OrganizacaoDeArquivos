@@ -1,3 +1,4 @@
+// O trabalho anterior escolhido foi o de Henrique Matarazo Camillo 
 //  Autor:
 //  Nome: Henrique Matarazo Camillo
 //  NUSP: 10294943
@@ -2027,7 +2028,8 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
             registro1->tamanho = tamanhoRegistro(registro1);
             //verifica se há registros no arquivo 2, caso não escreve o que já foi lido do arquivo 1 e para
             if(!recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
-                tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+                if(isMerging)
+                    tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
                 break;
             }
             registro2->tamanho = tamanhoRegistro(registro2);
@@ -2035,17 +2037,20 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
         }
     }
     // caso ainda tenha registros apenas no arquivo 1, escreve
-    while(recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
-        registro1->tamanho = tamanhoRegistro(registro1);
-        tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+    if(isMerging){
+        while(recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
+            registro1->tamanho = tamanhoRegistro(registro1);
+            tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+        }
     }
 
     //caso ainda tenha registros apenas no arquivo 2, escreve
-    while(recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
-        registro2->tamanho = tamanhoRegistro(registro2);
-        tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
-    }   
-
+    if(isMerging){
+        while(recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
+            registro2->tamanho = tamanhoRegistro(registro2);
+            tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+        }   
+    }
     // Muda a consistência do arquivo de escrita
     cabecalho->status = '1';
     rewind(novoBin);

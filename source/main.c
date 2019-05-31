@@ -1,3 +1,4 @@
+// O trabalho anterior escolhido foi o de Henrique Matarazo Camillo 
 //  Autor:
 //  Nome: Henrique Matarazo Camillo
 //  NUSP: 10294943
@@ -135,30 +136,6 @@ int main() {
             free(nomeDoArquivo);
             free(nomeDoArquivo2);
             free(nomeDoArquivoDeSaida);
-            break;
-        // Funcionalidade 10:
-        case 10:
-
-            break;
-
-        // Funcionalidade 11:
-        case 11:
-
-            break;
-        
-        // Funcionalidade 12:
-        case 12:
-
-            break;
-
-        // Funcionalidade 13:
-        case 13:
-
-            break;
-
-        // Funcionalidade 14:
-        case 14:
-
             break;
             
         // Funcionalidade inválida
