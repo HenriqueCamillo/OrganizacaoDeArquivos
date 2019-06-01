@@ -14,8 +14,9 @@
 #include "escreverNaTela.h"
 #include "merge_sort.h"
 
-// Tamanho do buffer
+// Tamanho do buffer e tamanho da string de busca do índice
 #define BUFFER_TAM 300
+#define INDICE_BUSCA_TAM 120
 
 // Struct que mostra a página de disco atual e quantos bytes já foram lidos dela
 typedef struct _paginadDeDisco {
@@ -51,6 +52,17 @@ typedef struct _registro {
     char* cargoServidor;
 } sRegistro;
 
+// Struct que representa o cabeçalho de um arquivo de índices
+typedef struct _cabecalhoIndices {
+    char status;
+    int nroRegistros;
+} sCabecalhoDeIndices;
+
+// Struct que representa índice de um registro 
+typedef struct _indice {
+    char* chaveBusca;
+    long int byteOffset;
+} sIndice;
 
 /**
  * @brief  Cria um registro vazio alocando espaço na memória para ele.
@@ -65,7 +77,6 @@ sRegistro* criarRegistro() {
 
     return registro;
 }
-
 
 /**
  * @brief  Calcula o tamanho de um registro (ignorando o campo "removido" e o indicador de tamanho do registro)
@@ -179,6 +190,44 @@ void liberarCabecalho(sCabecalho* cabecalho) {
     free(cabecalho->desCampo3);
     free(cabecalho->desCampo4);
     free(cabecalho->desCampo5);
+    free(cabecalho);
+}
+
+/**
+ * @brief  Cria um registro de índice, alocando memória para ele
+ * @retval Retorna o registro de índice criado
+ */
+sIndice* criarIndice() {
+    sIndice* indice = malloc(sizeof(sIndice));
+    indice->chaveBusca = malloc(sizeof(char) * INDICE_BUSCA_TAM);
+}
+
+/**
+ * @brief  Libera memória alocada por um registro de índice
+ * @param  indiceRegistro: Índice do registro a ser liberado
+ * @retval None
+ */
+void liberarIndice(sIndice* indice) {
+    free(indice->chaveBusca);
+    free(indice);
+}
+
+/**
+ * @brief  Cria um cabeçalho de índice, alocando memória para ele e incializando as variáveis com 0
+ * @retval 
+ */
+sCabecalhoDeIndices* criarCabecalhoDeIndices() {
+    sCabecalhoDeIndices* cabecalho = malloc(sizeof(sCabecalhoDeIndices));
+    cabecalho->nroRegistros = 0;
+    cabecalho->status = '0';
+}
+
+/**
+ * @brief  Libera memória alocada por um cabeçalho de índices
+ * @param  cabecalho: Cabeçalho a ser liberado
+ * @retval None
+ */
+void liberarCabecalhoDeIndices(sCabecalhoDeIndices* cabecalho) {
     free(cabecalho);
 }
 
@@ -1877,6 +1926,7 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
     // Escreve o arquivo binário na tela
     binarioNaTela2(nomeDoArquivoDeSaida);
 }
+
 //!###############################################################################################################################
 
 void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida, bool isMerging){
@@ -2069,5 +2119,185 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
     fclose(bin1);
     fclose(bin2);
     fclose(novoBin);
+    binarioNaTela2(nomeDoArquivoDeSaida);
+}
+
+//!###############################################################################################################################
+
+/**
+ * @brief  Gera uma lista de índices a partir de um arquivo binário
+ * @note   Salva a quantidade de registros lidos no cabeçalho de índices
+ * @param  bin: Arquivo de onde se lerá os registros
+ * @param  cabecalhoDeIndices: Cabeçalho que conterá a quantidade de
+ * @retval 
+ */
+sIndice** gerarListaDeIndices(FILE* bin, sCabecalhoDeIndices* cabecalhoDeIndices) {
+    // Coloca o cursor na posição do primeiro registro
+    fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    // Declara variáveis usadas para a recuperação de registros    
+    sRegistro* registro = criarRegistro();
+    sPaginaDeDisco paginaDeDisco;
+    long int byteOffset;
+
+    // Cria uma lista de índices
+    sIndice** listaDeIndices = NULL;
+    int i = 0;
+
+    // Recupera todos os registros e adiciona o índice dos que possuem nome não nulo na lista de índices
+    while (recuperarRegistro(registro, bin, &paginaDeDisco, &byteOffset)) {
+        // Se o nome do registro não é nulo, adiciona na lista
+        if (registro->nomeServidor[0] != '\0') {
+            if (i == 486) {
+                int a = 0;
+            }
+            // Cria um índice
+            sIndice* indice = criarIndice();
+            indice->byteOffset = byteOffset;
+            strcpy(indice->chaveBusca, registro->nomeServidor);
+
+
+            // Adiciona à lista
+            listaDeIndices = realloc(listaDeIndices, (i + 1) * sizeof(sIndice*));
+            listaDeIndices[i++] = indice;
+        }
+    }
+
+    cabecalhoDeIndices->nroRegistros = i;
+    liberarRegistro(registro);
+
+    return listaDeIndices;
+}
+
+/**
+ * @brief  Compara a chave de busca de dois índices
+ * @param  indice1: Índice 1
+ * @param  indice2: índice 2
+ * @retval Retorna o valor de menos o retorno de strcmp
+ */
+int compararIndice(const void* indice1, const void* indice2) {
+    const sIndice* i1 = *(const sIndice**) indice1;
+    const sIndice* i2 = *(const sIndice**) indice2;
+    return -strcmp(i1->chaveBusca, i2->chaveBusca);
+}
+/**
+ * @brief  Escreve lixo em um arquivo
+ * @param  bin: Arquivo onde será escrito lixo
+ * @param  quantidade: Quantidade de lixo que será escrito
+ * @param  string: Indica se o lixo será escrito após uma string, sendo assim nexessário colocar um \n no começo
+ * @retval None
+ */
+void escreverLixo(FILE* bin, int quantidade, bool string) {
+    char lixo = '@';
+
+    // Escreve o \0 se necessário
+    if (string) {
+        quantidade--;
+        char barraZero = '\0';
+        fwrite(&barraZero, sizeof(char), 1, bin);
+    }
+
+    // Escreve lixo
+    for (int i = 0; i < quantidade; i++) {
+        fwrite(&lixo, sizeof(char), 1, bin);
+    }
+}
+
+/**
+ * @brief  Escreve o cabeçalho de índices em um arquivo binário
+ * @param  arquivoDeIndices: Arquivo de índices onde o cabeçalho será escrito
+ * @param  cabecalhoDeIndices: Cabeçalho que será escrito no arquivo
+ * @retval None
+ */
+void escreverCabecalhoDeIndice(FILE* arquivoDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices) {
+    fwrite(&cabecalhoDeIndices->status, sizeof(char), 1, arquivoDeIndices);
+    fwrite(&cabecalhoDeIndices->nroRegistros, sizeof(int), 1, arquivoDeIndices);
+
+    int quantidadeDeLixo = PAGINA_DE_DISCO_TAM - sizeof(char) - sizeof(int);
+    escreverLixo(arquivoDeIndices, quantidadeDeLixo, false);
+}
+
+
+/**
+ * @brief  Escreve um índice no registro
+ * @param  arquivoDeIndices: Arquivo onde será escrito
+ * @param  indice: Índice que será escrito
+ * @retval None
+ */
+void escreverIndice(FILE* arquivoDeIndices, sIndice* indice) {
+    // Escreve a chave busca
+    int tamanhoDoCampo = strlen(indice->chaveBusca);
+    fwrite(indice->chaveBusca, sizeof(char), tamanhoDoCampo, arquivoDeIndices);
+
+    // Escreve lixo no espaç que sobrar
+    escreverLixo(arquivoDeIndices, INDICE_BUSCA_TAM - tamanhoDoCampo, true);
+
+    // Escreve o byteoffset
+    fwrite(&indice->byteOffset, sizeof(long int), 1, arquivoDeIndices);
+}
+
+/**
+ * @brief  Muda a consistência do arquivo para '1'
+ * @param  bin: Arquivo binário que se tornará consistente
+ * @retval None
+ */
+void tornarArquivoConsistente(FILE* bin) {
+    char consistencia = '1';
+    rewind(bin);
+    fwrite(&consistencia, sizeof(char), 1, bin);
+}
+
+void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
+    // Abre o arquivo binário 
+    FILE* bin = fopen(nomeDoArquivo, "rb");
+
+    // Verifica se foi aberto corretamente
+    if (bin == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Lê o cabeçalho já verificando o status do arquivo
+    sCabecalho* cabecalho = criarCabecalho();
+    if (!lerCabecalhoBin(cabecalho, bin)) {
+        printf("Falha no processamento do arquivo.\n");
+
+        fclose(bin);
+        liberarCabecalho(cabecalho);
+
+        return;
+    }
+
+    // Cria um caebçalho de índices e um vetor com índices
+    sCabecalhoDeIndices* cabecalhoDeIndices = criarCabecalhoDeIndices();
+    sIndice** listaDeIndices = gerarListaDeIndices(bin, cabecalhoDeIndices);
+    
+    // Fecha o arquivo, já que os registros já foram lidos
+    fclose(bin);
+
+    // Ordena os índices alfabeticamente de forma estável
+    MS_sort(listaDeIndices, cabecalhoDeIndices->nroRegistros, sizeof(sIndice*), compararIndice);
+
+    // Cria arquivo de índices
+    FILE* arquivoDeindices = fopen(nomeDoArquivoDeSaida, "wb");
+
+    // Escreve o cabeçalho
+    escreverCabecalhoDeIndice(arquivoDeindices, cabecalhoDeIndices);
+
+    // Escreve os índices e já libera memória alocada
+    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+        escreverIndice(arquivoDeindices, listaDeIndices[i]);
+        liberarIndice(listaDeIndices[i]);
+    }
+    free(listaDeIndices);
+
+    // Muda o status do cabeçalho
+    tornarArquivoConsistente(arquivoDeindices);
+
+    // Libera memória alocada e fecha os arquivos
+    liberarCabecalho(cabecalho);
+    fclose(arquivoDeindices);
+
+    // Imprime o binário
     binarioNaTela2(nomeDoArquivoDeSaida);
 }

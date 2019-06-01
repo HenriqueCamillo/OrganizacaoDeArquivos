@@ -137,6 +137,40 @@ int main() {
             free(nomeDoArquivo2);
             free(nomeDoArquivoDeSaida);
             break;
+
+        // Funcionalidade 10:
+        case 10:
+            // Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivoDeSaida = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            // Lê input
+            scanf("%s %s", nomeDoArquivo, nomeDoArquivoDeSaida);
+
+            // Realiza a funcionalidade
+            gerarArquivoDeIndices(nomeDoArquivo, nomeDoArquivoDeSaida);
+
+            // Libera memória
+            free(nomeDoArquivo);
+            free(nomeDoArquivoDeSaida);
+
+            break;
+
+        // Funcionalidade 11:
+        case 11:
+            break;
+
+        // Funcionalidade 12:
+        case 12:
+            break;
+            
+        // Funcionalidade 13:
+        case 13:
+            break;
+
+        // Funcionalidade 14:
+        case 14:
+            break;
             
         // Funcionalidade inválida
         default:

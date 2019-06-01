@@ -76,4 +76,14 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
  * @retval None
  */
 void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida, bool isMerging);
+
+
+/**
+ * @brief  Gera um arquivo de índices a partir de um arquivo binário
+ * @param  nomeDoArquivo: Nome do arquivo binário a partir do qual se gerará o arquivo de índices
+ * @param  nomeDoArquivoDeSaida: Nome do arquivo de índices gerado
+ * @retval None
+ */
+void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
+
 #endif

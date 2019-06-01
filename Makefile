@@ -6,17 +6,16 @@
 #   NUSP: 10734387
 
 all:
-	gcc source/*.c -o programaTrab3 -g 
-	@# -Wall -pedantic
+	gcc source/*.c -o programaTrab4 -g 
 
 run:
-	./programaTrab3
+	./programaTrab4
 
 clean:
-	rm programaTrab3
+	rm programaTrab4
 
 zip:
-	zip -r T3 ./source Makefile
+	zip -r T4 ./source Makefile
 
 reset:
 	unzip -o arquivos-binarios.zip
