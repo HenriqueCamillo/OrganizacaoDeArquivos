@@ -2374,6 +2374,20 @@ bool contemIndice(FILE* bin) {
     return contem;
 }
 
+/**
+ * @brief  Cria um array de bools para indicar quais páginas de disco já foram acessadas
+ * @note   Todos os valores começam com false
+ * @param  bin: 
+ * @retval 
+ */
+int quantidadeDePaginas(FILE* bin) {
+    long int posicao = ftell(bin);
+    fseek(bin, 0, SEEK_END);
+    long int tamanho = ftell(bin);
+
+    return tamanho / PAGINA_DE_DISCO_TAM + 1;
+}
+
 void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
     // Abre os arquivos
     FILE* bin = fopen(nomeDoArquivoBinario, "rb");
@@ -2406,7 +2420,6 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
     // Checa se os arquivos possuem regsitros
     if (!contemRegistros(bin) || !contemIndice(arquivoDeIndices)) {
         printf("Falha no processamento do arquivo.\n");
-        printf("Registro inexistente.\n");
 
         fclose(bin);
         fclose(arquivoDeIndices);
@@ -2423,23 +2436,47 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
     bool registroEncontrado = false;
     long int posicao;
 
+    // Cria array de bools para lidar com as páginas de acessadas
+    int qtdDePaginas = quantidadeDePaginas(bin);
+    bool* paginasAcessadas = calloc(qtdDePaginas, sizeof(bool));
+
     // Lê enquanto houver índices
     while (lerIndice(arquivoDeIndices, indice)) {
         // Se achou um índice com a chave de busca procurada, recupera o registros e o imprime
         if (!strcmp(indice->chaveBusca, valorBusca)) {
             registroEncontrado = true;
+
             fseek(bin, indice->byteOffset, SEEK_SET);
             lerRegistroBin(registro, bin, paginaDeDisco, &posicao);
             imprimirRegistroComCabecalho(registro, cabecalho);
+
+            paginasAcessadas[posicao / PAGINA_DE_DISCO_TAM] = true;
         }
     }
 
-    // Imprime a quantidade de páginas de disco usadas, ou mensagem de registro inexistente
+    // Imprime a quantidade de páginas de disco acesadas, ou mensagem de registro inexistente
     if (!registroEncontrado) {
         printf("Registro inexistente.\n");
     } else {
-        printf("Número de páginas de disco para carregar o arquivo de índice: 21\n");
-        printf("Número de páginas de disco para acessar o arquivo de dados: 3\n");
+        // Calcula quantas páginas foram acessadas no arquivo de dados e mostra esse valor
+        long int posicao = ftell(arquivoDeIndices);
+        int qtdDePaginasAcessadas = posicao / PAGINA_DE_DISCO_TAM;
+
+        if (posicao % PAGINA_DE_DISCO_TAM != 0) {
+            qtdDePaginasAcessadas++;
+        }
+
+        printf("Número de páginas de disco para carregar o arquivo de índice: %d\n", qtdDePaginasAcessadas);
+
+        // Verifica quantas páginas foram acessadas no arquivo de dados e mostra esse valor
+        qtdDePaginasAcessadas = 1;      // Começa do 1 para contar o cabeçalho
+        for (int i = 0; i < qtdDePaginas; i++) {
+            if (paginasAcessadas[i]) {
+                qtdDePaginasAcessadas++;
+            }
+        }
+
+        printf("Número de páginas de disco para acessar o arquivo de dados: %d\n", qtdDePaginasAcessadas);
     }
 
 
@@ -2449,6 +2486,7 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
     liberarCabecalhoDeIndices(cabecalhoDeIndices);
     liberarIndice(indice);
     liberarRegistro(registro);
+    free(paginasAcessadas);
     fclose(bin);
     fclose(arquivoDeIndices);
 }
