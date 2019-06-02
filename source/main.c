@@ -13,12 +13,12 @@
 #include "escreverNaTela.h"
 
 int main() {
-
-    bool isMerging = false;
     // Digite a opção de funcionalidade
     int opcao;
     scanf("%d", &opcao);
+
     // Parâmetros da funcionalidadades
+    bool isMerging = false;
     char *nomeDoArquivo, *nomeDoArquivo2, *nomeDoArquivoDeSaida;
     char *campoBusca, *valorBusca;
 
@@ -138,7 +138,7 @@ int main() {
             free(nomeDoArquivoDeSaida);
             break;
 
-        // Funcionalidade 10:
+        // Funcionalidade 10: Cria um arquivo de índices para um arquivo que contém registros
         case 10:
             // Aloca memória
             nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
@@ -158,6 +158,24 @@ int main() {
 
         // Funcionalidade 11:
         case 11:
+            // Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
+            campoBusca = malloc(sizeof(char) * STRING_TAM_MAX);
+            valorBusca = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            // Lê input
+            scanf("%s %s %s %[^\r\n]", nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+            
+            // Realiza a funcionalidade
+            buscarPeloArquivoDeIndices(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+
+            // Libera memória
+            free(nomeDoArquivo);
+            free(nomeDoArquivo2);
+            free(campoBusca);
+            free(valorBusca);
+
             break;
 
         // Funcionalidade 12:

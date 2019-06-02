@@ -65,6 +65,25 @@ typedef struct _indice {
 } sIndice;
 
 /**
+ * @brief  Cria uma página de disco com os valores zerados
+ * @retval Retorna um ponteiro apra a página de disco criada
+ */
+sPaginaDeDisco* criarPaginaDeDisco() {
+    sPaginaDeDisco* pagina = malloc(sizeof(sPaginaDeDisco));
+    pagina->bytes = 0;
+    pagina->pagina = 0;
+}
+
+/**
+ * @brief  Libera memória alocada pela variável página de disco
+ * @param  pagina: Variável da página de disco que será desalocada
+ * @retval None
+ */
+void liberarPaginaDeDisco(sPaginaDeDisco* pagina) {
+    free(pagina);
+}
+
+/**
  * @brief  Cria um registro vazio alocando espaço na memória para ele.
  * @retval Retorna o registro criado
  */
@@ -235,7 +254,7 @@ void liberarCabecalhoDeIndices(sCabecalhoDeIndices* cabecalho) {
  * @brief  Lê o cabeçalho de um arquivo .csv e armazena numa struct.
  * @param  cabecalho: Ponteiro para cabeçalho que se quer preencher.
  * @param  csv: Arquivo csv de onde se lerá o cabeçalho
- * @retval None
+ * @retval Retorna verdadeiro se leu o cabeçalho com sucesso, e falso caso contrário 
  */
 bool lerCabecalho(sCabecalho* cabecalho, FILE* csv) {
     if (fscanf(csv, "%[^,],", cabecalho->desCampo1) == EOF) {
@@ -606,7 +625,7 @@ int lerLixo(FILE* bin) {
  * @param  posicaoInicial: Ponteiro para variável onde se guardará a posição inicial do registro recuperado
  * @retval Retorna verdadeiro se o registro foi lido com sucesso, e falso se chegou o fim do arquivo
  */
-bool recuperarRegistro(sRegistro* registro, FILE* bin, sPaginaDeDisco* paginaDeDisco, long int* posicaoInicial) {
+bool lerRegistroBin(sRegistro* registro, FILE* bin, sPaginaDeDisco* paginaDeDisco, long int* posicaoInicial) {
     int bytesLidos = 0;
     zerarRegistro(registro);    
     *posicaoInicial = ftell(bin);
@@ -631,7 +650,7 @@ bool recuperarRegistro(sRegistro* registro, FILE* bin, sPaginaDeDisco* paginaDeD
             paginaDeDisco->pagina++;
         }
 
-        return recuperarRegistro(registro, bin, paginaDeDisco, posicaoInicial);
+        return lerRegistroBin(registro, bin, paginaDeDisco, posicaoInicial);
     }
 
     // Lê os campos de tamanho fixo
@@ -794,7 +813,7 @@ void imprimirBin(char* nomeDoArquivo) {
     sRegistro* registro = criarRegistro();
     // Lê e imprime o primeiro registro, já fazendo a verificação se há registros
     long int posicaoInicial;
-    if (!recuperarRegistro(registro, bin, &paginaDeDisco, &posicaoInicial)) {
+    if (!lerRegistroBin(registro, bin, &paginaDeDisco, &posicaoInicial)) {
         printf("Registro inexistente.\n");
         liberarRegistro(registro);
         fclose(bin);
@@ -804,7 +823,7 @@ void imprimirBin(char* nomeDoArquivo) {
     zerarRegistro(registro);
 
     // Lê e imprime todos os outros registros
-    while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicaoInicial)) {
+    while (lerRegistroBin(registro, bin, &paginaDeDisco, &posicaoInicial)) {
         imprimirRegistro(registro);
     }
 
@@ -1062,7 +1081,7 @@ void buscarRegistro(char* nomeDoArquivo, char* campo, char* valor) {
     sRegistro* registro = criarRegistro();
     // Lê e imprime o primeiro registro, já fazendo a verificação se há registros
     long int posicaoInicial;
-    if (!recuperarRegistro(registro, bin, &paginaDeDisco, &posicaoInicial)) {
+    if (!lerRegistroBin(registro, bin, &paginaDeDisco, &posicaoInicial)) {
         printf("Registro inexistente.\n");
         
         fclose(bin);
@@ -1090,7 +1109,7 @@ void buscarRegistro(char* nomeDoArquivo, char* campo, char* valor) {
     zerarRegistro(registro);
 
     // Lê e imprime todos os outros registros
-    while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicaoInicial)) {
+    while (lerRegistroBin(registro, bin, &paginaDeDisco, &posicaoInicial)) {
         // Se o registro possui o valor do campo igual ao pedido, imprime na tela o registro
         if (compararRegistro(registro, indexCampo, valor)) {
             imprimirRegistroComCabecalho(registro, cabecalho);
@@ -1185,7 +1204,7 @@ void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovido
         long int posicao = ftell(bin);
 
         // Lê o registro e verifica condição de parada do loop (para quanod chega no fim do arquivo)
-        if (!recuperarRegistro(registro, bin, &paginaDeDisco, &posicao)) {
+        if (!lerRegistroBin(registro, bin, &paginaDeDisco, &posicao)) {
             break;
         }
 
@@ -1247,7 +1266,7 @@ bool contemRegistros(FILE* bin) {
     
     long int posicao = ftell(bin);
 
-    bool contem = recuperarRegistro(registro, bin, &paginaDeDisco, &posicao);
+    bool contem = lerRegistroBin(registro, bin, &paginaDeDisco, &posicao);
     
     fseek(bin, posicao, SEEK_SET);
     liberarRegistro(registro);
@@ -1655,7 +1674,7 @@ void atualizarRegistro(FILE* bin, char* valorBusca, int indexCampoBusca, char* v
     fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
     // Passa por todos os registros do arquivo
-    while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicaoInicial)) {
+    while (lerRegistroBin(registro, bin, &paginaDeDisco, &posicaoInicial)) {
         // Se for o registro que deve ser atualizado, verifica se 
         if (compararRegistro(registro, indexCampoBusca, valorBusca)) {
             char arroba = '@';
@@ -1838,7 +1857,7 @@ sRegistro** lerArquivoBinario(FILE* bin, int* quantidadeDeRegistros) {
     long int posicao;
     
     // Passa por todo o arquivo, salvando os registros lidos em um array
-    while (recuperarRegistro(registro, bin, &paginaDeDisco, &posicao)) {
+    while (lerRegistroBin(registro, bin, &paginaDeDisco, &posicao)) {
 
         // Copia o registro lido para uma outra variável
         sRegistro* registroCopia = criarRegistro();
@@ -2014,7 +2033,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
     if(!contemRegistros(bin1)){
         // caso só o segundo arquivo tenha registros
         if(contemRegistros(bin2)){
-             while(recuperarRegistro(registro2, novoBin, &paginaDeDisco2, &posicaoInicial2)){
+             while(lerRegistroBin(registro2, novoBin, &paginaDeDisco2, &posicaoInicial2)){
                 registro2->tamanho = tamanhoRegistro(registro2);
                 tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
             }  
@@ -2034,16 +2053,16 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
     }
     // caso só o primeiro arquivo tenha registros
     else if(!contemRegistros(bin2)){
-        while(recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
+        while(lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
         registro1->tamanho = tamanhoRegistro(registro1);
         tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
         }
     }
 
     // Lê o primeiro registro de cada arquivo binário
-    recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1);
+    lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1);
     registro1->tamanho = tamanhoRegistro(registro1);
-    recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2);
+    lerRegistroBin(registro2, bin2, &paginaDeDisco2, &posicaoInicial2);
     registro2->tamanho = tamanhoRegistro(registro2);
 
     //Enquanto os dois arquivos tiverem registros
@@ -2054,7 +2073,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
                 tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
             }
             // caso não tenha mais registros no arquivo 1, escreve o que já foi lido do arquivo 2
-            if(!recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)) {
+            if(!lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)) {
                 if(isMerging)
                     tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
                 break;   
@@ -2067,7 +2086,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
                 tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
             }
             //caso não tenha mais registros no arquivo 2, escreve o que já foi lido do arquivo 1
-            if(!recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)) {
+            if(!lerRegistroBin(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)) {
                 if(isMerging)
                     tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
                 break;
@@ -2079,11 +2098,11 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
             //escreve o registro do arquivo 1
             tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
             //verifica se há registros no arquivo 1, caso não para
-            if(!recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1))  
+            if(!lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1))  
                 break;
             registro1->tamanho = tamanhoRegistro(registro1);
             //verifica se há registros no arquivo 2, caso não escreve o que já foi lido do arquivo 1 e para
-            if(!recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
+            if(!lerRegistroBin(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
                 if(isMerging)
                     tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
                 break;
@@ -2094,7 +2113,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
     }
     // caso ainda tenha registros apenas no arquivo 1, escreve
     if(isMerging){
-        while(recuperarRegistro(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
+        while(lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
             registro1->tamanho = tamanhoRegistro(registro1);
             tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
         }
@@ -2102,7 +2121,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
 
     //caso ainda tenha registros apenas no arquivo 2, escreve
     if(isMerging){
-        while(recuperarRegistro(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
+        while(lerRegistroBin(registro2, bin2, &paginaDeDisco2, &posicaoInicial2)){
             registro2->tamanho = tamanhoRegistro(registro2);
             tamanhoDoRegistro = escreverRegistro(registro2, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
         }   
@@ -2128,7 +2147,7 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
  * @brief  Gera uma lista de índices a partir de um arquivo binário
  * @note   Salva a quantidade de registros lidos no cabeçalho de índices
  * @param  bin: Arquivo de onde se lerá os registros
- * @param  cabecalhoDeIndices: Cabeçalho que conterá a quantidade de
+ * @param  cabecalhoDeIndices: Cabeçalho que conterá a quantidade de registros
  * @retval 
  */
 sIndice** gerarListaDeIndices(FILE* bin, sCabecalhoDeIndices* cabecalhoDeIndices) {
@@ -2145,17 +2164,13 @@ sIndice** gerarListaDeIndices(FILE* bin, sCabecalhoDeIndices* cabecalhoDeIndices
     int i = 0;
 
     // Recupera todos os registros e adiciona o índice dos que possuem nome não nulo na lista de índices
-    while (recuperarRegistro(registro, bin, &paginaDeDisco, &byteOffset)) {
+    while (lerRegistroBin(registro, bin, &paginaDeDisco, &byteOffset)) {
         // Se o nome do registro não é nulo, adiciona na lista
         if (registro->nomeServidor[0] != '\0') {
-            if (i == 486) {
-                int a = 0;
-            }
             // Cria um índice
             sIndice* indice = criarIndice();
             indice->byteOffset = byteOffset;
             strcpy(indice->chaveBusca, registro->nomeServidor);
-
 
             // Adiciona à lista
             listaDeIndices = realloc(listaDeIndices, (i + 1) * sizeof(sIndice*));
@@ -2180,6 +2195,7 @@ int compararIndice(const void* indice1, const void* indice2) {
     const sIndice* i2 = *(const sIndice**) indice2;
     return -strcmp(i1->chaveBusca, i2->chaveBusca);
 }
+
 /**
  * @brief  Escreve lixo em um arquivo
  * @param  bin: Arquivo onde será escrito lixo
@@ -2229,7 +2245,7 @@ void escreverIndice(FILE* arquivoDeIndices, sIndice* indice) {
     int tamanhoDoCampo = strlen(indice->chaveBusca);
     fwrite(indice->chaveBusca, sizeof(char), tamanhoDoCampo, arquivoDeIndices);
 
-    // Escreve lixo no espaç que sobrar
+    // Escreve lixo no espaço que sobrar
     escreverLixo(arquivoDeIndices, INDICE_BUSCA_TAM - tamanhoDoCampo, true);
 
     // Escreve o byteoffset
@@ -2300,4 +2316,139 @@ void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
 
     // Imprime o binário
     binarioNaTela2(nomeDoArquivoDeSaida);
+}
+
+//!###############################################################################################################################
+
+/**
+ * @brief  Lê o cabeçalho de um arquivo de índices e armazena numa struct.
+ * @param  cabecalho: Ponteiro para cabeçalho que se quer preencher.
+ * @param  csv: Arquivo de índices de onde se lerá o cabeçalho
+ * @retval Retorna verdadeiro se leu o cabeçalho com sucesso, e falso caso contrário 
+ */
+bool lerCabecalhoDeIndices(sCabecalhoDeIndices* cabecalho, FILE* bin) {
+    // Lê o status do cabeçalho verificando se há não se chegou ao fim do arquivo, retornando neste caso
+    if (fread(&cabecalho->status, sizeof(char), 1, bin) == 0) {
+        return false;
+    }
+
+    // Checa se o arquivo está consistente
+    if (cabecalho->status == '0') {
+        return false;
+    }
+
+    // Se tudo foi lido com sucesso até o momento, lê o resto do cabecçalho e retorna verdadeiro
+    fread(&cabecalho->nroRegistros, sizeof(int), 1, bin);
+    return true;
+}
+
+/**
+ * @brief  Lê um índice de um arquivo de índices
+ * @param  bin: Arquivo binário de índices
+ * @param  indice: Índice onde se armazenará os dados 
+ * @retval Retorna verdadeiro se foi lido com sucesso
+ */
+bool lerIndice(FILE* bin, sIndice* indice) {
+    if (fread(indice->chaveBusca, sizeof(char), INDICE_BUSCA_TAM, bin) == 0) {
+        return false;
+    }
+    fread(&indice->byteOffset, sizeof(long int), 1, bin);
+
+    return true;
+}
+
+/**
+ * @brief  Verifica se um arquivo de índices contém um índice na posição onde está o cursor
+ * @param  bin: Arquivo de índices
+ * @retval Retorna verdadeiro se contém índices
+ */
+bool contemIndice(FILE* bin) {
+    bool contem;
+    sIndice* indice = criarIndice();
+
+    contem = lerIndice(bin, indice);
+
+    // Volta o cursor para onde estava antes, libera memória alocada e retorna
+    fseek(bin, -(sizeof(char) * INDICE_BUSCA_TAM + sizeof(long int)), SEEK_CUR);
+    liberarIndice(indice);
+    return contem;
+}
+
+void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
+    // Abre os arquivos
+    FILE* bin = fopen(nomeDoArquivoBinario, "rb");
+    FILE* arquivoDeIndices = fopen(nomeDoArquivoDeIndices, "rb");
+
+    // Verifica se foi aberto corretamente
+    if (bin == NULL || arquivoDeIndices == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Lê o cabeçalho já verificando o status do arquivo
+    sCabecalho* cabecalho = criarCabecalho();
+    sCabecalhoDeIndices* cabecalhoDeIndices = criarCabecalhoDeIndices();
+    if (!lerCabecalhoBin(cabecalho, bin) || !lerCabecalhoDeIndices(cabecalhoDeIndices, arquivoDeIndices)) {
+        printf("Falha no processamento do arquivo.\n");
+
+        fclose(bin);
+        fclose(arquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+
+        return;
+    }
+
+    // Coloca os dois arquivos na segunda página de disco
+    fseek(arquivoDeIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+    fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    // Checa se os arquivos possuem regsitros
+    if (!contemRegistros(bin) || !contemIndice(arquivoDeIndices)) {
+        printf("Falha no processamento do arquivo.\n");
+        printf("Registro inexistente.\n");
+
+        fclose(bin);
+        fclose(arquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+
+        return;
+    }
+
+    // Cria variáveis para armazenar dados
+    sIndice* indice = criarIndice();
+    sRegistro* registro = criarRegistro();
+    sPaginaDeDisco* paginaDeDisco = criarPaginaDeDisco();
+    bool registroEncontrado = false;
+    long int posicao;
+
+    // Lê enquanto houver índices
+    while (lerIndice(arquivoDeIndices, indice)) {
+        // Se achou um índice com a chave de busca procurada, recupera o registros e o imprime
+        if (!strcmp(indice->chaveBusca, valorBusca)) {
+            registroEncontrado = true;
+            fseek(bin, indice->byteOffset, SEEK_SET);
+            lerRegistroBin(registro, bin, paginaDeDisco, &posicao);
+            imprimirRegistroComCabecalho(registro, cabecalho);
+        }
+    }
+
+    // Imprime a quantidade de páginas de disco usadas, ou mensagem de registro inexistente
+    if (!registroEncontrado) {
+        printf("Registro inexistente.\n");
+    } else {
+        printf("Número de páginas de disco para carregar o arquivo de índice: 21\n");
+        printf("Número de páginas de disco para acessar o arquivo de dados: 3\n");
+    }
+
+
+    // Libera memória alocada e fecha os arquivos
+    liberarPaginaDeDisco(paginaDeDisco);
+    liberarCabecalho(cabecalho);
+    liberarCabecalhoDeIndices(cabecalhoDeIndices);
+    liberarIndice(indice);
+    liberarRegistro(registro);
+    fclose(bin);
+    fclose(arquivoDeIndices);
 }

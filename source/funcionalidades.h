@@ -86,4 +86,15 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
  */
 void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
 
+/**
+ * @brief  Busca registros a partir do arquivo de índices e imprime na tela os registros achados 
+ *        e a quantidade de páginas de disco acessadas
+ * @param  nomeDoArquivoBinario: Arquivo que contém os registros
+ * @param  nomeDoArquivoDeIndices: Arquivo que contém os índices dos registros
+ * @param  campoBusca: Campos pelo qual se buscará
+ * @param  valor: Valor do campo pelo qual se buscará
+ * @retval None
+ */
+void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca);
+
 #endif
