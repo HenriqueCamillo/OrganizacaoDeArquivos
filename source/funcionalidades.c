@@ -1044,9 +1044,10 @@ bool compararRegistro(sRegistro* registro, int campo, char* valor) {
  * @param  nomeDoArquivo: Nome do arquivo binário que contém os registros
  * @param  campo: Campo ao qual valor pertence
  * @param  valor: Valor pelo qual se quer buscar
+ * @param  imprimirPaginas: Indica se deve imprimir a quantidade de páginas de disco acessadas mesmo se não foi encontrado nada
  * @retval None
  */
-int buscarRegistro(char* nomeDoArquivo, char* campo, char* valor) {
+int buscarRegistro(char* nomeDoArquivo, char* campo, char* valor, bool imprimirPaginas) {
     // Abre o arquivo binário 
     FILE* bin = fopen(nomeDoArquivo, "rb");
 
@@ -1134,6 +1135,10 @@ int buscarRegistro(char* nomeDoArquivo, char* campo, char* valor) {
     // Verifica se foi encontrado algum registro
     if (registrosEncontrados == 0) {
         printf("Registro inexistente.\n");
+
+        if (imprimirPaginas) {
+            printf("Número de páginas de disco acessadas: %d\n", paginaDeDisco.pagina);
+        }
 
         fclose(bin);    
         liberarCabecalho(cabecalho);
@@ -2570,7 +2575,7 @@ sIndice** buscarEGerarListaDeIndices(FILE* bin, char* valorBusca, int numeroDeRe
     }
 }
 
-int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
+int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca, bool imprimirPaginas) {
     // Abre os arquivos
     FILE* bin = fopen(nomeDoArquivoBinario, "rb");
     FILE* arquivoDeIndices = fopen(nomeDoArquivoDeIndices, "rb");
@@ -2626,18 +2631,6 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     int tamanhoDaLista;
     int* indexes = buscaBinaria(arquivoDeIndices, listaDeIndices, valorBusca, cabecalhoDeIndices->nroRegistros, &tamanhoDaLista);
 
-    if (indexes == NULL) {
-        printf("Registro inexistente.\n");
-
-        // Libera memória alocada e fecha os arquivos
-        liberarCabecalho(cabecalho);
-        liberarCabecalhoDeIndices(cabecalhoDeIndices);
-        fclose(bin);
-        fclose(arquivoDeIndices);
-
-        return 1;
-    } 
-
     // Cria variáveis para armazenar dados
     sIndice* indice = criarIndice();
     sRegistro* registro = criarRegistro();
@@ -2647,6 +2640,41 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     // Cria array de bools para lidar com as páginas de acessadas
     int qtdDePaginas = quantidadeDePaginas(bin);
     bool* paginasAcessadas = calloc(qtdDePaginas, sizeof(bool));
+
+    if (indexes == NULL) {
+        printf("Registro inexistente.\n");
+
+        if (imprimirPaginas) {
+            // Calcula quantas páginas foram acessadas no arquivo de dados e mostra esse valor
+            fseek(arquivoDeIndices, 0, SEEK_END);
+            posicao = ftell(arquivoDeIndices);
+            int qtdDePaginasAcessadas = posicao / PAGINA_DE_DISCO_TAM;
+
+            if (posicao % PAGINA_DE_DISCO_TAM != 0) {
+                qtdDePaginasAcessadas++;
+            }
+
+            printf("Número de páginas de disco para carregar o arquivo de índice: %d\n", qtdDePaginasAcessadas);
+
+            // Verifica quantas páginas foram acessadas no arquivo de dados e mostra esse valor
+            qtdDePaginasAcessadas = 1;      // Começa do 1 para contar o cabeçalho
+            for (int i = 0; i < qtdDePaginas; i++) {
+                if (paginasAcessadas[i]) {
+                    qtdDePaginasAcessadas++;
+                }
+            }
+
+            printf("Número de páginas de disco para acessar o arquivo de dados: %d\n", qtdDePaginasAcessadas);
+        }
+
+        // Libera memória alocada e fecha os arquivos
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+        fclose(bin);
+        fclose(arquivoDeIndices);
+
+        return 1;
+    } 
 
     // Imprime todos os regsitros, marcando as páginas acessadas
     for (int i = 0; i < tamanhoDaLista; i++) {
@@ -2693,11 +2721,11 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
 void compararBuscas(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
     // Realiza a funcionalidae 3
     printf("*** Realizando a busca sem o auxílio de índice\n");
-    int paginasAcessadaSemIndice = buscarRegistro(nomeDoArquivoBinario, campoBusca, valorBusca);
+    int paginasAcessadaSemIndice = buscarRegistro(nomeDoArquivoBinario, campoBusca, valorBusca, true);
 
     // Realiza a funcionalidade 11
     printf("*** Realizando a busca com o auxílio de um índice secundário fortemente ligado\n");
-    int paginasAcessadaComIndice = buscarPeloArquivoDeIndices(nomeDoArquivoBinario, nomeDoArquivoDeIndices, campoBusca, valorBusca);
+    int paginasAcessadaComIndice = buscarPeloArquivoDeIndices(nomeDoArquivoBinario, nomeDoArquivoDeIndices, campoBusca, valorBusca, true);
 
     // Compara as duas
     int diferenca = paginasAcessadaSemIndice - paginasAcessadaComIndice;

@@ -59,7 +59,7 @@ int main() {
             scanf("%s %s %[^\r\n]", nomeDoArquivo, campoBusca, valorBusca);
 
             // Realiza a funcionalidade
-            buscarRegistro(nomeDoArquivo, campoBusca, valorBusca);
+            buscarRegistro(nomeDoArquivo, campoBusca, valorBusca, false);
 
             // Libera memória alocada
             free(nomeDoArquivo);
@@ -168,7 +168,7 @@ int main() {
             scanf("%s %s %s %[^\r\n]", nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
             
             // Realiza a funcionalidade
-            buscarPeloArquivoDeIndices(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+            buscarPeloArquivoDeIndices(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca, false);
 
             // Libera memória
             free(nomeDoArquivo);
