@@ -1194,16 +1194,11 @@ bool localizarRegistrosRemovidos(FILE* bin, sLista* registrosRemovidos) {
  * @param  bin: Arquivo binário
  * @retval None
  */
-sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin, bool isIndice) {
+void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin) {
     sPaginaDeDisco paginaDeDisco;
     sRegistro* registro = criarRegistro();
     char arroba = '@';
-    sRegistro** listaDeRegistros = NULL;    
-    int i = 0;
-
-    if(isIndice){
-        listaDeRegistros = malloc(sizeof(sRegistro));
-    }
+    
     // Passa pelo arquivo inteiro procurando registros a serem removidos
     while (true) {
         // Salva posição do registro
@@ -1230,14 +1225,10 @@ sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosR
             }
 
             listaAdicionar(registrosRemovidos, posicao, registro->tamanho);
-            if(isIndice){
-                listaDeRegistros = realloc(listaDeRegistros, sizeof(sRegistro*) * (i + 1));
-                listaDeRegistros[i++] = registro;
-            }
         }
     }
 
-    return listaDeRegistros;
+    liberarRegistro(registro);
 }
 /**
  * @brief  Escreve nos registros reovidos do arquivo o encadeamento da lista em ordem crescente de tamanho
@@ -1288,7 +1279,6 @@ void remocaoDeRegistros() {
     char* campoBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
     char* valorBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
     int n;
-    sRegistro** listaDeRegistros = NULL;
 
     // Lê o nome do arquivo e a quantidade de registros a serem removidos
     scanf("%s %d", nomeDoArquivo, &n);
@@ -1361,13 +1351,7 @@ void remocaoDeRegistros() {
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-       listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, false);
-       if(listaDeRegistros != NULL){
-           for(int j = 0; listaDeRegistros[i] != NULL; j++){
-               liberarRegistro(listaDeRegistros[j]);
-           }
-           free(listaDeRegistros);
-       }
+        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin);
     }
 
     // Escreve o encadeamento da lista no arquivo
@@ -2596,16 +2580,18 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
 
 //!###############################################################################################################################
 
-void removeIndice(sRegistro** listaDeRegistros, sIndice** listaDeIndices){
+void removeIndice(FILE* bin, sRegistro** listaDeRegistros, sIndice** listaDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices){
+    int rrn;
     if(listaDeRegistros != NULL && listaDeIndices != NULL){
         for(int i = 0; listaDeRegistros[i] != NULL; i++){
-            //busca binaria
-
+            
+            liberarRegistro(listaDeRegistros[i]);
         }
+        free(listaDeRegistros);
     }
 }
 
-void removidosListaDeIndices(){
+void removerListaDeIndices(){
 
     // Aloca memória para variáveis
     char* nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
@@ -2732,6 +2718,8 @@ void removidosListaDeIndices(){
         listaLiberar(&registrosRemovidos);
         fclose(bin);
         fclose(binIndices);
+
+        return;
     }
 
     sIndice** listaDeIndices = NULL;
@@ -2753,15 +2741,52 @@ void removidosListaDeIndices(){
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-        listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, true);
+        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin);
 
         if(listaDeRegistros != NULL){
-            removeIndice(listaDeRegistros, listaDeIndices);
+            removeIndice(bin, listaDeRegistros, listaDeIndices, cabecalhoDeIndices);
         }
     }
 
     FILE *novoBinIndices = fopen(nomeDoArquivoDeIndices, "wb");
+    
+    if(novoBinIndices == NULL){
+        printf("Falha no processamento do arquivo.\n");
 
+        for(int j = 0; listaDeRegistros[j] != NULL; j++){
+            liberarRegistro(listaDeRegistros[j]);
+        }
+        free(listaDeRegistros);
+        for(int j = 0; cabecalhoDeIndices->nroRegistros; j++){
+            liberarIndice(listaDeIndices[j]);
+        }
+        free(listaDeIndices);
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+        
+        listaLiberar(&registrosRemovidos);
+        fclose(bin);
+
+        return; 
+    }
+
+     // Escreve o cabeçalho
+    escreverCabecalhoDeIndice(novoBinIndices, cabecalhoDeIndices);
+
+    // Escreve os índices e já libera memória alocada
+    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+        escreverIndice(novoBinIndices, listaDeIndices[i]);
+        liberarIndice(listaDeIndices[i]);
+    }
+    free(listaDeIndices);
+
+    // Muda o status do cabeçalho
+    tornarArquivoConsistente(novoBinIndices);
 
     // Escreve o encadeamento da lista no arquivo
     escreverEncadeamento(bin, registrosRemovidos);
@@ -2779,6 +2804,9 @@ void removidosListaDeIndices(){
     listaLiberar(&registrosRemovidos);
 
     // Escreve o arquivo na tela e fecha
-    binarioNaTela1(binIndices);
-    fclose(binIndices);
+    fclose(novoBinIndices);
+    binarioNaTela2(nomeDoArquivoDeIndices);
+    fclose(bin);
+    liberarCabecalhoDeIndices(cabecalhoDeIndices);
+    free(nomeDoArquivoDeIndices);
 }
