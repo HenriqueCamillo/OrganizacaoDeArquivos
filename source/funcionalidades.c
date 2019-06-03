@@ -1193,11 +1193,16 @@ bool localizarRegistrosRemovidos(FILE* bin, sLista* registrosRemovidos) {
  * @param  bin: Arquivo binário
  * @retval None
  */
-void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin) {
+sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin, bool isIndice) {
     sPaginaDeDisco paginaDeDisco;
     sRegistro* registro = criarRegistro();
-    char arroba = '@';    
+    char arroba = '@';
+    sRegistro** listaDeRegistros = NULL;    
+    int i = 0;
 
+    if(isIndice){
+        listaDeRegistros = malloc(sizeof(sRegistro));
+    }
     // Passa pelo arquivo inteiro procurando registros a serem removidos
     while (true) {
         // Salva posição do registro
@@ -1224,12 +1229,15 @@ void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovido
             }
 
             listaAdicionar(registrosRemovidos, posicao, registro->tamanho);
+            if(isIndice){
+                listaDeRegistros = realloc(listaDeRegistros, sizeof(sRegistro*) * (i + 1));
+                listaDeRegistros[i++] = registro;
+            }
         }
     }
 
-    liberarRegistro(registro);
+    return listaDeRegistros;
 }
-
 /**
  * @brief  Escreve nos registros reovidos do arquivo o encadeamento da lista em ordem crescente de tamanho
  * @param  bin: Arquivo binário
@@ -1279,6 +1287,7 @@ void remocaoDeRegistros() {
     char* campoBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
     char* valorBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
     int n;
+    sRegistro** listaDeRegistros = NULL;
 
     // Lê o nome do arquivo e a quantidade de registros a serem removidos
     scanf("%s %d", nomeDoArquivo, &n);
@@ -1351,7 +1360,13 @@ void remocaoDeRegistros() {
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin);
+       listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, false);
+       if(listaDeRegistros != NULL){
+           for(int j = 0; listaDeRegistros[i] != NULL; j++){
+               liberarRegistro(listaDeRegistros[j]);
+           }
+           free(listaDeRegistros);
+       }
     }
 
     // Escreve o encadeamento da lista no arquivo
@@ -2241,15 +2256,17 @@ void escreverCabecalhoDeIndice(FILE* arquivoDeIndices, sCabecalhoDeIndices* cabe
  * @retval None
  */
 void escreverIndice(FILE* arquivoDeIndices, sIndice* indice) {
-    // Escreve a chave busca
-    int tamanhoDoCampo = strlen(indice->chaveBusca);
-    fwrite(indice->chaveBusca, sizeof(char), tamanhoDoCampo, arquivoDeIndices);
+    if(indice->byteOffset != -1){
+        // Escreve a chave busca
+        int tamanhoDoCampo = strlen(indice->chaveBusca);
+        fwrite(indice->chaveBusca, sizeof(char), tamanhoDoCampo, arquivoDeIndices);
 
-    // Escreve lixo no espaço que sobrar
-    escreverLixo(arquivoDeIndices, INDICE_BUSCA_TAM - tamanhoDoCampo, true);
+        // Escreve lixo no espaço que sobrar
+        escreverLixo(arquivoDeIndices, INDICE_BUSCA_TAM - tamanhoDoCampo, true);
 
-    // Escreve o byteoffset
-    fwrite(&indice->byteOffset, sizeof(long int), 1, arquivoDeIndices);
+        // Escreve o byteoffset
+        fwrite(&indice->byteOffset, sizeof(long int), 1, arquivoDeIndices);
+    }
 }
 
 /**
@@ -2489,4 +2506,193 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
     free(paginasAcessadas);
     fclose(bin);
     fclose(arquivoDeIndices);
+}
+
+//!###############################################################################################################################
+
+void removeIndice(sRegistro** listaDeRegistros, sIndice** listaDeIndices){
+    if(listaDeRegistros != NULL && listaDeIndices != NULL){
+        for(int i = 0; listaDeRegistros[i] != NULL; i++){
+            //busca binaria
+
+        }
+    }
+}
+
+void removidosListaDeIndices(){
+
+    // Aloca memória para variáveis
+    char* nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+    char* nomeDoArquivoDeIndices = malloc(sizeof(char) * STRING_TAM_MAX);
+    char* campoBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
+    char* valorBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
+    int n;
+    sRegistro** listaDeRegistros = NULL;
+
+    // Lê o nome do arquivo e a quantidade de registros a serem removidos
+    scanf("%s %s %d", nomeDoArquivo, nomeDoArquivoDeIndices, &n);
+
+    // Abre o arquivo binário 
+    FILE* bin = fopen(nomeDoArquivo, "rb+");
+
+    // Verifica se foi aberto corretamente
+    if (bin == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        return;
+    }
+
+    // Lê o cabeçalho já verificando o status do arquivo
+    sCabecalho* cabecalho = criarCabecalho();
+    if (!lerCabecalhoBin(cabecalho, bin)) {
+        printf("Falha no processamento do arquivo.\n");
+        
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        fclose(bin);
+        liberarCabecalho(cabecalho);
+
+        return;
+    }
+
+    // Muda a consistência do arquivo
+    cabecalho->status = '0';
+    rewind(bin);
+    fwrite(&cabecalho->status, sizeof(char), 1, bin);
+
+    // Coloca o cursor na posição do primeiro registro
+    fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    // Busca por todos os registros já removidos no arquivo, e faz uma lista
+    sLista* registrosRemovidos = listaCriar();
+
+    // Faz uma primeira leitura pra ver se há registros no arquivo, 
+    // e imprime mensagem de erro, muda consistência do arquivo e libera memória caso não haja
+    if (!contemRegistros(bin)) {
+        printf("Falha no processamento do arquivo.\n");
+        
+        // Muda a consistência do arquivo
+        cabecalho->status = '1';
+        rewind(bin);
+        fwrite(&cabecalho->status, sizeof(char), 1, bin);
+        
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        listaLiberar(&registrosRemovidos);
+        fclose(bin);
+
+        return;
+    }
+
+    // Abre o arquivo de índices
+    FILE* binIndices = fopen(nomeDoArquivoDeIndices, "rb");
+
+    // Verifica se o arquivo de índices foi aberto corretamente
+    if(binIndices == NULL){
+        printf("Falha no processamento do arquivo.\n");
+
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        fclose(bin);
+        liberarCabecalho(cabecalho);
+        return;
+    }
+
+    // Cria o cabeçalho do arquivo de índices, lê e verifica a consistência do arquivo, caso haja inconsistência,
+    //termina o programa
+    sCabecalhoDeIndices* cabecalhoDeIndices = criarCabecalhoDeIndices();
+    if(!lerCabecalhoDeIndices(cabecalhoDeIndices, binIndices)){
+        printf("Falha no processamento do arquivo.\n");
+
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        fclose(bin);
+        fclose(binIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+        
+        return;
+    }
+
+    fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    if(!contemIndice(binIndices)){
+        printf("Falha no processamento do arquivo.\n");
+
+        // Libera memória
+        free(nomeDoArquivo);
+        free(campoBusca);
+        free(valorBusca);
+        free(nomeDoArquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+        listaLiberar(&registrosRemovidos);
+        fclose(bin);
+        fclose(binIndices);
+    }
+
+    sIndice** listaDeIndices = NULL;
+    fclose(binIndices);
+
+    // Lê os registros buscando por removidos até acabar o arquivo
+    while(localizarRegistrosRemovidos(bin, registrosRemovidos));
+
+    // Realiza a remoção de registros n vezes, lendo sempre novas entradas
+    for (int i = 0; i < n; i++) {
+        fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+        scanf("%s ", campoBusca);
+        scanf("%[^\r\n]", valorBusca);
+
+        // Se o valor vier entre aspas, retira as aspas
+        if (valorBusca[0] == '\"') {
+            sscanf(valorBusca ,"\"%[^\"]\"", valorBusca);
+        }
+        int indexCampo = campoIndex(cabecalho, campoBusca);
+
+        listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, true);
+
+        if(listaDeRegistros != NULL){
+            removeIndice(listaDeRegistros, listaDeIndices);
+        }
+    }
+
+    FILE *novoBinIndices = fopen(nomeDoArquivoDeIndices, "wb");
+
+
+    // Escreve o encadeamento da lista no arquivo
+    escreverEncadeamento(bin, registrosRemovidos);
+
+    // Muda a consistência do arquivo
+    cabecalho->status = '1';
+    rewind(bin);
+    fwrite(&cabecalho->status, sizeof(char), 1, bin);
+
+    // Libera memória alocada
+    free(nomeDoArquivo);
+    free(campoBusca);
+    free(valorBusca);
+    liberarCabecalho(cabecalho);
+    listaLiberar(&registrosRemovidos);
+
+    // Escreve o arquivo na tela e fecha
+    binarioNaTela1(binIndices);
+    fclose(binIndices);
 }
