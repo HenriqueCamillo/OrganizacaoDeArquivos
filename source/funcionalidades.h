@@ -33,9 +33,10 @@ void imprimirBin(char* nomeDoArquivo);
  * @param  nomeDoArquivo: Nome do arquivo .bin
  * @param  campo: Campo pelo qual se quer buscar.
  * @param  valor: Valor pelo qual se quer buscar.
- * @retval None
+ * @param  imprimirPaginas: Indica se deve imprimir a quantidade de páginas de disco acessadas mesmo se não foi encontrado nada
+ * @retval Número de páginas de disco acessadas
  */
-void buscarRegistro(char* nomeDoArquivo, char* campo, char* valor);
+int buscarRegistro(char* nomeDoArquivo, char* campo, char* valor, bool imprimirPaginas);
 
 /**
  * @brief  Remove registros que contém algum dos n campos de busca fornecidos
@@ -92,8 +93,19 @@ void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
  * @param  nomeDoArquivoDeIndices: Arquivo que contém os índices dos registros
  * @param  campoBusca: Campos pelo qual se buscará
  * @param  valor: Valor do campo pelo qual se buscará
+ * @param  imprimirPaginas: Indica se deve imprimir a quantidade de páginas de disco acessadas mesmo se não foi encontrado nada
+ * @retval Número de páginas de disco acessadas no arquivo de dados
+ */
+int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca, bool imprimirPaginas);
+
+/**
+ * @brief  Compara a busca de registros com e sem um auxílio de um arquivo de índices
+ * @param  nomeDoArquivoBinario: Nome do arquivo binário
+ * @param  nomeDoArquivoDeIndices: Nome do arquivo de índices
+ * @param  campoBusca: Campo pelo qual está se buscando
+ * @param  valorBusca: Valor do campo pelo qual está se buscando
  * @retval None
  */
-void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca);
+void compararBuscas(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca);
 
 #endif

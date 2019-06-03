@@ -59,7 +59,7 @@ int main() {
             scanf("%s %s %[^\r\n]", nomeDoArquivo, campoBusca, valorBusca);
 
             // Realiza a funcionalidade
-            buscarRegistro(nomeDoArquivo, campoBusca, valorBusca);
+            buscarRegistro(nomeDoArquivo, campoBusca, valorBusca, false);
 
             // Libera memória alocada
             free(nomeDoArquivo);
@@ -168,7 +168,7 @@ int main() {
             scanf("%s %s %s %[^\r\n]", nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
             
             // Realiza a funcionalidade
-            buscarPeloArquivoDeIndices(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+            buscarPeloArquivoDeIndices(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca, false);
 
             // Libera memória
             free(nomeDoArquivo);
@@ -188,6 +188,24 @@ int main() {
 
         // Funcionalidade 14:
         case 14:
+            // Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
+            campoBusca = malloc(sizeof(char) * STRING_TAM_MAX);
+            valorBusca = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            // Lê input
+            scanf("%s %s %s %[^\r\n]", nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+            
+            // Realiza a funcionalidade
+            compararBuscas(nomeDoArquivo, nomeDoArquivo2, campoBusca, valorBusca);
+
+            // Libera memória
+            free(nomeDoArquivo);
+            free(nomeDoArquivo2);
+            free(campoBusca);
+            free(valorBusca);
+
             break;
             
         // Funcionalidade inválida
