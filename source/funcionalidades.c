@@ -2413,7 +2413,7 @@ void copiarIndice(sIndice* indiceDestino, sIndice* indiceOrigem) {
  * @brief  Busca o primeiro índice do registro de acordo com o valor da busca
  * @param  bin: Arquivo de índices
  * @param  valorBusca: valor pelo qual está se bugando
- * @retval RRN da primeia ocorrência da condição de busca
+ * @retval RRN da primeia ocorrência da condição de busca. Retorna -1 caso não ache nada.
  */
 int buscaBinarioDeIndices(FILE* bin, char* valorBusca, int numeroDeRegistros) {
     sIndice* indice = criarIndice();
@@ -2438,8 +2438,9 @@ int buscaBinarioDeIndices(FILE* bin, char* valorBusca, int numeroDeRegistros) {
         }
 
         // Se o inicio é igual ao final, a busca binária chegou ao final
-        if (inicio >= final) {
-            break;
+        if (inicio > final) {
+            liberarIndice(indice);
+            return -1;
         }
 
         // Atualiza o rrn e lê o próximo índice
@@ -2511,41 +2512,38 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
     sIndice* indice = criarIndice();
     sRegistro* registro = criarRegistro();
     sPaginaDeDisco* paginaDeDisco = criarPaginaDeDisco();
-    bool registroEncontrado = false;
     long int posicao;
 
     // Cria array de bools para lidar com as páginas de acessadas
     int qtdDePaginas = quantidadeDePaginas(bin);
     bool* paginasAcessadas = calloc(qtdDePaginas, sizeof(bool));
 
-    int numeroDeIndices;
+    // Busca o RRN do primeiro índice que satisfaz a condição de busca e lê o índice
     int rrn = buscaBinarioDeIndices(arquivoDeIndices, valorBusca, cabecalhoDeIndices->nroRegistros);
 
-    fseek(arquivoDeIndices, posicaoPorRRN(rrn++), SEEK_SET);
-    lerIndice(arquivoDeIndices, indice);
-
-    while (!strcmp(valorBusca, indice->chaveBusca)) {
-        // Marca que foi encontrado um registro
-        registroEncontrado = true;
-
-        // Lê o registro e o imprime
-        fseek(bin, indice->byteOffset, SEEK_SET);
-        lerRegistroBin(registro, bin, paginaDeDisco, &posicao);
-        imprimirRegistroComCabecalho(registro, cabecalho);
-
-        // Marca página como acessada
-        paginasAcessadas[posicao / PAGINA_DE_DISCO_TAM] = true;
-
-        // Lê o próximo índice
-        posicao = posicaoPorRRN(rrn++);
-        fseek(arquivoDeIndices, posicao, SEEK_SET);
-        lerIndice(arquivoDeIndices, indice);
-    }
-
-    // Imprime a quantidade de páginas de disco acesadas, ou mensagem de registro inexistente
-    if (!registroEncontrado) {
+    if (rrn == -1) {
         printf("Registro inexistente.\n");
     } else {
+        // Lê o primeiro índice
+        fseek(arquivoDeIndices, posicaoPorRRN(rrn++), SEEK_SET);
+        lerIndice(arquivoDeIndices, indice);
+
+        // Passa por todos os índices que são compatíveis com o valor de busca
+        while (!strcmp(valorBusca, indice->chaveBusca)) {
+            // Lê o registro e o imprime
+            fseek(bin, indice->byteOffset, SEEK_SET);
+            lerRegistroBin(registro, bin, paginaDeDisco, &posicao);
+            imprimirRegistroComCabecalho(registro, cabecalho);
+
+            // Marca página como acessada
+            paginasAcessadas[posicao / PAGINA_DE_DISCO_TAM] = true;
+
+            // Lê o próximo índice
+            posicao = posicaoPorRRN(rrn++);
+            fseek(arquivoDeIndices, posicao, SEEK_SET);
+            lerIndice(arquivoDeIndices, indice);
+        }
+
         // Calcula quantas páginas foram acessadas no arquivo de dados e mostra esse valor
         fseek(arquivoDeIndices, 0, SEEK_END);
         long int posicao = ftell(arquivoDeIndices);
