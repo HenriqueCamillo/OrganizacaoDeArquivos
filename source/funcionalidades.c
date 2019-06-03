@@ -2467,6 +2467,55 @@ int buscaBinarioDeIndices(FILE* bin, char* valorBusca, int numeroDeRegistros) {
     return rrn;
 }
 
+/**
+ * @brief  Adiciona todos os índices que satisfaçam a condição a uma lista de arrays e retorna
+ * @param  bin: Arquivo de índices
+ * @param  valorBusca: Valor pelo qual se quer buscar
+ * @param  numeroDeRegistros: Número de registros no arquivo de índices
+ * @param  tamanhoDaLista: Variável usada como valor de retorno. Tamanho do lista criada.
+ * @retval 
+ */
+sIndice** buscarEGerarListaDeIndices(FILE* bin, char* valorBusca, int numeroDeRegistros, int* tamanhoDaLista) {
+    // Busca o RRN do primeiro índice que satisfaz a condição de busca e lê o índice
+    int rrn = buscaBinarioDeIndices(bin, valorBusca, numeroDeRegistros);
+
+    // Checa se o rrn é válido
+    if (rrn == -1) {
+        return NULL;
+    } else {
+        // Lê o primeiro índice
+        sIndice* indice = criarIndice();
+        fseek(bin, posicaoPorRRN(rrn++), SEEK_SET);
+        lerIndice(bin, indice);
+
+        // Cria uma lista de índices
+        sIndice** listaDeIndices = NULL;
+        numeroDeRegistros = 0;
+
+        // Passa por todos os índices que são compatíveis com o valor de busca
+        while (!strcmp(valorBusca, indice->chaveBusca)) {
+            // Copia o índice para uma variável temporária
+            sIndice* temp = criarIndice();
+            copiarIndice(temp, indice);
+
+            // Realoca memória para lista e adiciona índice a ela
+            listaDeIndices = realloc(listaDeIndices, sizeof(sIndice*) * numeroDeRegistros + 1);
+            listaDeIndices[numeroDeRegistros++] = temp;
+
+            // Lê o próximo índice
+            long int posicao = posicaoPorRRN(rrn++);
+            fseek(bin, posicao, SEEK_SET);
+            lerIndice(bin, indice);
+        }
+
+
+        // Libera memória alocada e retorna lista de índices
+        liberarIndice(indice);
+        *tamanhoDaLista = numeroDeRegistros;
+        return listaDeIndices;
+    }
+}
+
 void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
     // Abre os arquivos
     FILE* bin = fopen(nomeDoArquivoBinario, "rb");
