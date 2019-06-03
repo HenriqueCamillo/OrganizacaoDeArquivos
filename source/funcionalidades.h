@@ -9,8 +9,8 @@
 #define FUNCIONALIDADES_H
 
 // Tamanho dos campos
-#define STRING_TAM_MAX 150
-#define TELEFONE_TAM 14
+#define STRING_TAM_MAX      150
+#define TELEFONE_TAM        14
 #define CAMPO_CABECALHO_TAM 40
 #define PAGINA_DE_DISCO_TAM 32000
 
@@ -76,7 +76,6 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
  * @retval None
  */
 void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, char *nomeDoArquivoDeSaida, bool isMerging);
-
 
 /**
  * @brief  Gera um arquivo de índices a partir de um arquivo binário
