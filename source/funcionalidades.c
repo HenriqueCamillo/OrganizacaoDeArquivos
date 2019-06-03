@@ -1192,13 +1192,20 @@ bool localizarRegistrosRemovidos(FILE* bin, sLista* registrosRemovidos) {
  * @param  valorBusca: Valor do campo que será buscado
  * @param  registrosRemovidos: Lista com dados dos registros removidos
  * @param  bin: Arquivo binário
- * @retval None
+ * @param  isIndice: booleana para verificar quando é necessário alocar o array de ponteiros de registros
+ * @retval array de ponteiros dos registros encontrados
  */
-void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin) {
+sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovidos, FILE* bin, bool isIndice) {
     sPaginaDeDisco paginaDeDisco;
     sRegistro* registro = criarRegistro();
     char arroba = '@';
-    
+    sRegistro** listaDeRegistros = NULL;
+    int i = 0;
+    if(isIndice){
+        listaDeRegistros = malloc(sizeof(sRegistro));
+    }
+
+
     // Passa pelo arquivo inteiro procurando registros a serem removidos
     while (true) {
         // Salva posição do registro
@@ -1225,10 +1232,15 @@ void removerRegistro(int indexCampo, char* valorBusca, sLista* registrosRemovido
             }
 
             listaAdicionar(registrosRemovidos, posicao, registro->tamanho);
+            if(isIndice){
+                listaDeRegistros = realloc(listaDeRegistros, (i + 1) * sizeof(sRegistro*));
+                listaDeRegistros[i++] = registro;
+
+            }
         }
     }
 
-    liberarRegistro(registro);
+    return listaDeRegistros;
 }
 /**
  * @brief  Escreve nos registros reovidos do arquivo o encadeamento da lista em ordem crescente de tamanho
@@ -1351,7 +1363,7 @@ void remocaoDeRegistros() {
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin);
+        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, false);
     }
 
     // Escreve o encadeamento da lista no arquivo
@@ -2054,8 +2066,8 @@ void mergingAndMatchingRegistros(char *nomeDoArquivo1, char *nomeDoArquivo2, cha
     // caso só o primeiro arquivo tenha registros
     else if(!contemRegistros(bin2)){
         while(lerRegistroBin(registro1, bin1, &paginaDeDisco1, &posicaoInicial1)){
-        registro1->tamanho = tamanhoRegistro(registro1);
-        tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
+            registro1->tamanho = tamanhoRegistro(registro1);
+            tamanhoDoRegistro = escreverRegistro(registro1, novoBin, &paginaDeDiscoNovo, tamanhoDoRegistro);
         }
     }
 
@@ -2629,8 +2641,13 @@ void buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoD
 
 //!###############################################################################################################################
 
-void removeIndice(FILE* bin, sRegistro** listaDeRegistros, sIndice** listaDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices){
-    int rrn;
+void marcarRemovido(sIndice* indice){
+    if(indice != NULL){
+        indice->byteOffset = -1;
+    }
+}
+
+void removeIndice(sRegistro** listaDeRegistros, sIndice** listaDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices){
     if(listaDeRegistros != NULL && listaDeIndices != NULL){
         for(int i = 0; listaDeRegistros[i] != NULL; i++){
             
@@ -2771,11 +2788,15 @@ void removerListaDeIndices(){
         return;
     }
 
-    sIndice** listaDeIndices = NULL;
+    fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+    // Recupera todos os índices para a ram e fecha o arquivo de índices
+    sIndice** listaDeIndices = recuperaIndices(binIndices);
     fclose(binIndices);
 
     // Lê os registros buscando por removidos até acabar o arquivo
     while(localizarRegistrosRemovidos(bin, registrosRemovidos));
+
+    sRegistro** listaDeRegistros = NULL;
 
     // Realiza a remoção de registros n vezes, lendo sempre novas entradas
     for (int i = 0; i < n; i++) {
@@ -2790,12 +2811,11 @@ void removerListaDeIndices(){
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-        removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin);
-
-        if(listaDeRegistros != NULL){
-            removeIndice(bin, listaDeRegistros, listaDeIndices, cabecalhoDeIndices);
-        }
+       listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, true);
+       //removeIndice();
     }
+
+
 
     FILE *novoBinIndices = fopen(nomeDoArquivoDeIndices, "wb");
     
