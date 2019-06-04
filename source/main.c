@@ -18,6 +18,7 @@ int main() {
     scanf("%d", &opcao);
 
     // Parâmetros da funcionalidadades
+    int n;
     bool isMerging = false;
     char *nomeDoArquivo, *nomeDoArquivo2, *nomeDoArquivoDeSaida;
     char *campoBusca, *valorBusca;
@@ -185,6 +186,20 @@ int main() {
             
         // Funcionalidade 13:
         case 13:
+            // Aloca memória
+            nomeDoArquivo = malloc(sizeof(char) * STRING_TAM_MAX);
+            nomeDoArquivo2 = malloc(sizeof(char) * STRING_TAM_MAX);
+
+            // Lê input
+            scanf("%s %s %d", nomeDoArquivo, nomeDoArquivo2, &n);
+
+            // Realiza a funcionalidade
+            inserirRegistrosComIndice(nomeDoArquivo, nomeDoArquivo2, n);
+
+            // Libera memória
+            free(nomeDoArquivo);
+            free(nomeDoArquivo2);
+
             break;
 
         // Funcionalidade 14:

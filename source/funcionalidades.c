@@ -1428,14 +1428,15 @@ char proximoByte(FILE* bin) {
  * @param  bin: Arquivo onde se escreverá o registro
  * @param  registro: Registros que será escrito
  * @param  insercaoNoFinal: Indica se o registro será escrito no final do arquivo
- * @retval None
+ * @retval Retorna a posição em que o registro foi escrito
  */
-void escreverRegistroEmEspacoVazio(FILE* bin, sRegistro* registro, bool insercaoNoFinal) {
+long int escreverRegistroEmEspacoVazio(FILE* bin, sRegistro* registro, bool insercaoNoFinal) {
     char arroba = '@';
+    long int posicao;
 
-    // Se for final de página de disco, e não couber o registro, cm
+    // Se for final de página de disco, e não couber o registro, preenche de arrobas
     if (insercaoNoFinal) {
-        long int posicao = ftell(bin);
+        posicao = ftell(bin);
         int tamanho = registro->tamanho + sizeof(int) + sizeof(char);
         int bytesRestantes = PAGINA_DE_DISCO_TAM - (posicao % PAGINA_DE_DISCO_TAM);
         
@@ -1460,6 +1461,10 @@ void escreverRegistroEmEspacoVazio(FILE* bin, sRegistro* registro, bool insercao
             fwrite(&tamanho, sizeof(int), 1, bin);
         }
     }
+
+    // Guarda a posição inicial de onde o registro será escrito
+    posicao = ftell(bin);
+
     // Escreve o valor removido na posição inicial do registro 
     fwrite(&registro->removido, sizeof(char), 1, bin);
 
@@ -1505,6 +1510,8 @@ void escreverRegistroEmEspacoVazio(FILE* bin, sRegistro* registro, bool insercao
         fwrite(&tag, sizeof(char), 1, bin);
         fwrite(registro->cargoServidor, sizeof(char), tamanho - 1, bin);
     }
+
+    return posicao;
 }
 
 /**
@@ -1527,6 +1534,33 @@ void inserirRegistro(FILE* bin, sRegistro* registro, sLista* registrosRemovidos)
     }
     
     escreverRegistroEmEspacoVazio(bin, registro, insercaoNoFinal);
+}
+
+/**
+ * @brief  Insere um registro (de acordo com best-fit) e gera um índice para ele
+ * @param  bin: Arquivo onde será inserido
+ * @param  registro: Registro a ser inserido
+ * @param  registrosRemovidos: Lista com as posições e tamanhos dos registros removidos
+ * @retval Índice do registro inserido
+ */
+sIndice* inserirRegistroERetornarIndice(FILE* bin, sRegistro* registro, sLista* registrosRemovidos) {
+    bool insercaoNoFinal;
+    long int posicao = listaRemover(registrosRemovidos, registro->tamanho);
+
+    if (posicao == -1) {
+        fseek(bin, 0,SEEK_END);
+        insercaoNoFinal = true;
+    } else {
+        fseek(bin, posicao, SEEK_SET);   
+        insercaoNoFinal = false;
+    }
+    
+    // Insere o registro e cria um índice para ele
+    sIndice* indice = criarIndice();
+    indice->byteOffset = escreverRegistroEmEspacoVazio(bin, registro, insercaoNoFinal);
+    strcpy(indice->chaveBusca, registro->nomeServidor);
+
+    return indice;
 }
 
 void insercaoDeRegistros() {
@@ -1921,11 +1955,11 @@ void ordenarRegistros(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
     cabecalho->topoLista = -1;
     cabecalho->status = '0';
 
-    // Lê todos os registros do arquivo binário e os ordena de acordo com i ID
+    // Lê todos os registros do arquivo binário e os ordena de acordo com o ID
     int quantidadeDeRegistros;
     sRegistro** registros = lerArquivoBinario(bin, &quantidadeDeRegistros);
 
-    // mergeSort(registros, 0, quantidadeDeRegistros);
+    // Ordena os registros
     MS_sort(registros, quantidadeDeRegistros, sizeof(sRegistro*), compararId);
 
     // Cria variável de página de disco
@@ -2272,12 +2306,11 @@ void escreverIndice(FILE* arquivoDeIndices, sIndice* indice) {
 }
 
 /**
- * @brief  Muda a consistência do arquivo para '1'
- * @param  bin: Arquivo binário que se tornará consistente
+ * @brief  Muda a consistência do arquivo para o valor passado por parâmetro
+ * @param  bin: Arquivo binário que terá sua consistência mudada
  * @retval None
  */
-void tornarArquivoConsistente(FILE* bin) {
-    char consistencia = '1';
+void mudarConsistenciaDoArquivo(FILE* bin, char consistencia) {
     rewind(bin);
     fwrite(&consistencia, sizeof(char), 1, bin);
 }
@@ -2326,8 +2359,8 @@ void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
     }
     free(listaDeIndices);
 
-    // Muda o status do cabeçalho
-    tornarArquivoConsistente(arquivoDeindices);
+    // Torna o arquivo consistente
+    mudarConsistenciaDoArquivo(arquivoDeindices, '1');
 
     // Libera memória alocada e fecha os arquivos
     liberarCabecalho(cabecalho);
@@ -2614,18 +2647,6 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     fseek(arquivoDeIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
     fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
-    // Checa se os arquivos possuem regsitros
-    if (!contemRegistros(bin) || !contemIndice(arquivoDeIndices)) {
-        printf("Falha no processamento do arquivo.\n");
-
-        fclose(bin);
-        fclose(arquivoDeIndices);
-        liberarCabecalho(cabecalho);
-        liberarCabecalhoDeIndices(cabecalhoDeIndices);
-
-        return -1;
-    }
-
     // Cria um array para armazenar todos os índices
     sIndice** listaDeIndices = malloc(sizeof(sIndice*) * cabecalhoDeIndices->nroRegistros);
 
@@ -2678,8 +2699,17 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
         }
 
         // Libera memória alocada e fecha os arquivos
+        for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+            liberarIndice(listaDeIndices[i]);
+        }
+        free(listaDeIndices);
+
+        liberarPaginaDeDisco(paginaDeDisco);
+        liberarRegistro(registro);
+        liberarIndice(indice);
         liberarCabecalho(cabecalho);
         liberarCabecalhoDeIndices(cabecalhoDeIndices);
+        free(paginasAcessadas);
         fclose(bin);
         fclose(arquivoDeIndices);
 
@@ -2718,10 +2748,22 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     printf("Número de páginas de disco para acessar o arquivo de dados: %d\n", qtdDePaginasAcessadas);
 
     // Libera memória
+    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+        liberarIndice(listaDeIndices[i]);
+    }
+    free(listaDeIndices);
+
+    free(indexes);
+    free(paginasAcessadas);
     liberarIndice(indice);
     liberarPaginaDeDisco(paginaDeDisco);
     liberarRegistro(registro);
+<<<<<<< HEAD
     free(paginasAcessadas);
+=======
+    liberarCabecalho(cabecalho);
+    liberarCabecalhoDeIndices(cabecalhoDeIndices);
+>>>>>>> origin/henrique
     fclose(bin);
     fclose(arquivoDeIndices);
     
@@ -3030,6 +3072,143 @@ void removerListaDeIndices(){
     liberarCabecalhoDeIndices(cabecalhoDeIndices);
     free(nomeDoArquivoDeIndices);
 }
+//!###############################################################################################################################
+
+void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, int n) {
+    // Abre os arquivos
+    FILE* bin = fopen(nomeDoArquivoBinario, "rb+");
+    FILE* arquivoDeIndices = fopen(nomeDoArquivoDeIndices, "rb");
+
+    // Verifica se foi aberto corretamente
+    if (bin == NULL || arquivoDeIndices == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Lê o cabeçalho já verificando o status do arquivo
+    sCabecalho* cabecalho = criarCabecalho();
+    sCabecalhoDeIndices* cabecalhoDeIndices = criarCabecalhoDeIndices();
+    if (!lerCabecalhoBin(cabecalho, bin) || !lerCabecalhoDeIndices(cabecalhoDeIndices, arquivoDeIndices)) {
+        printf("Falha no processamento do arquivo.\n");
+
+        fclose(bin);
+        fclose(arquivoDeIndices);
+        liberarCabecalho(cabecalho);
+        liberarCabecalhoDeIndices(cabecalhoDeIndices);
+
+        return;
+    }
+
+
+    // Torna o arquivo de dados inconsistente
+    mudarConsistenciaDoArquivo(bin, '0');
+
+    // Coloca os dois arquivos na segunda página de disco
+    fseek(arquivoDeIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+    fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
+
+    // Cria um array para armazenar todos os índices
+    sIndice** listaDeIndices = malloc(sizeof(sIndice*) * cabecalhoDeIndices->nroRegistros);
+
+    // Passa todos os índices para a RAM
+    fseek(arquivoDeIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+        sIndice* temp = criarIndice();
+        lerIndice(arquivoDeIndices, temp);
+        listaDeIndices[i] = temp;
+    }
+
+    // Fecha o arquivo de índices. Ele só será usado no final agora.
+    fclose(arquivoDeIndices);
+
+    // Busca por todos os registros já removidos no arquivo, e faz uma lista
+    sLista* registrosRemovidos = listaCriar();
+    while(localizarRegistrosRemovidos(bin, registrosRemovidos));
+    
+    // Aloca memória
+    char* id        = malloc(sizeof(char) * STRING_TAM_MAX); 
+    char* salario   = malloc(sizeof(char) * STRING_TAM_MAX); 
+    char* telefone  = malloc(sizeof(char) * STRING_TAM_MAX);  
+    char* nome      = malloc(sizeof(char) * STRING_TAM_MAX); 
+    char* cargo     = malloc(sizeof(char) * STRING_TAM_MAX); 
+    char* temp      = malloc(sizeof(char) * BUFFER_TAM); 
+    char* buffer    = malloc(sizeof(char) * BUFFER_TAM); 
+
+    sRegistro* registro = criarRegistro();
+    // Realiza a funcionalidade n vezes, lendo sempre novas entradas
+    for (int i = 0; i < n; i++) {
+        // Lê alguns parâmetros e coloca os que devem ser tratados em uma variável diferente
+        scanf("%s %s %s %[^\r\n]",id, salario, telefone, buffer);
+
+        // Trata de aspas na string do telefone
+        if (telefone[0] == '\"') {
+            sscanf(telefone, "\"%[^\"]\"", temp);
+            strcpy(telefone, temp);
+        }
+
+        // Lê a primeira string contínua do nome, parar verificar se é nulo
+        sscanf(buffer, "%s", nome);
+
+        // Se não for nulo, lê o valor que está entre aspas e atuliza o valor restante na variável "linha"
+        // Caso seja nulo, apenas atualiza a variável linha
+        if (strcmp(nome, "NULO")) {
+            sscanf(buffer, "\"%[^\"]\" %[^\r\n]", nome, temp);
+            strcpy(buffer, temp);
+        } else {
+            sscanf(buffer, "%*s %[^\r\n]", temp);
+            strcpy(buffer, temp);
+        }
+
+        // Faz o mesmo que foi feito para o nome, agora para o cargo
+        sscanf(buffer, "%s", cargo);
+        if (strcmp(nome, "NULO")) {
+            sscanf(buffer, "\"%[^\"]\"", cargo);
+        }
+
+        // Preenche registro com as informações necessárias e o insere
+        preencherRegistro(registro, id, salario, telefone, nome, cargo);
+        sIndice* temp = inserirRegistroERetornarIndice(bin, registro, registrosRemovidos);
+
+        // Adiciona índice à lista de índices, caso o nome não seja nulo
+        if (temp->chaveBusca[0] != '\0') {
+            listaDeIndices = realloc(listaDeIndices, (cabecalhoDeIndices->nroRegistros + 1) * sizeof(sIndice*));
+            listaDeIndices[cabecalhoDeIndices->nroRegistros++] = temp;
+        }
+    }
+
+    // Escreve o encadeamento no arquivo de dados
+    escreverEncadeamento(bin, registrosRemovidos);
+
+    // Muda a consistência do arquivo de dados
+    mudarConsistenciaDoArquivo(bin, '1');
+
+    // Ordena os índices alfabeticamente de forma estável
+    MS_sort(listaDeIndices, cabecalhoDeIndices->nroRegistros, sizeof(sIndice*), compararIndice);
+
+    // Abre novamente o arquivo de índices, agora reescrevendo-o do zero
+    arquivoDeIndices = fopen(nomeDoArquivoDeIndices, "wb");
+
+    // Reescreve tudo no arquivo de índices, e já libera memória alocada pelos índices
+    escreverCabecalhoDeIndice(arquivoDeIndices, cabecalhoDeIndices);
+    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+        escreverIndice(arquivoDeIndices, listaDeIndices[i]);
+        liberarIndice(listaDeIndices[i]);
+    }
+    free(listaDeIndices);
+
+    // Libera memória alocada
+    listaLiberar(&registrosRemovidos);
+    free(buffer);
+    free(temp);
+    free(id);
+    free(salario);
+    fclose(bin);
+    fclose(arquivoDeIndices);
+
+    // Escreve o binário na tela
+    binarioNaTela2(nomeDoArquivoDeIndices);
+}
+
 //!###############################################################################################################################
 
 void compararBuscas(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {

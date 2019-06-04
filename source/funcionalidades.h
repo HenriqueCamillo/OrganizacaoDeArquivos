@@ -107,6 +107,15 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
 void removerListaDeIndices();
 
 /**
+ * @brief  Insere registros em uma arquivo de dados e insere seu índice no arquivo de índices
+ * @param  nomeDoArquivoBinario: Nome do arquivo de dados
+ * @param  nomeDoArquivoDeIndices: Nome do arquivo de índices
+ * @param  n: Quantidade de inserções que serão realizados
+ * @retval None
+ */
+void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, int n);
+
+/**
  * @brief  Compara a busca de registros com e sem um auxílio de um arquivo de índices
  * @param  nomeDoArquivoBinario: Nome do arquivo binário
  * @param  nomeDoArquivoDeIndices: Nome do arquivo de índices
