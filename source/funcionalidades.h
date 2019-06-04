@@ -98,6 +98,14 @@ void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida);
  */
 int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca, bool imprimirPaginas);
 
+ /**
+  * @brief  Função que realiza a remoção dos índices e dos registros, tanto no arquivo de índices (que é reescrito),
+  * quanto no arquivo binário (que tem os registros removidos logicamente)
+  * @note   
+  * @retval None
+  */ 
+void removerListaDeIndices();
+
 /**
  * @brief  Compara a busca de registros com e sem um auxílio de um arquivo de índices
  * @param  nomeDoArquivoBinario: Nome do arquivo binário

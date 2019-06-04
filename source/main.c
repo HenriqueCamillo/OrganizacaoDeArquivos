@@ -180,6 +180,7 @@ int main() {
 
         // Funcionalidade 12:
         case 12:
+            removerListaDeIndices();
             break;
             
         // Funcionalidade 13:

@@ -1161,6 +1161,24 @@ int buscarRegistro(char* nomeDoArquivo, char* campo, char* valor, bool imprimirP
 //!###############################################################################################################################
 
 /**
+ * @brief  Copia todos os campos de um registro para o outro
+ * @param  registroDestino: Para onde será copiado
+ * @param  registroOrigem: De onde será copiado
+ * @retval None
+ */
+void copiarRegistro(sRegistro* registroDestino, sRegistro* registroOrigem) {
+    registroDestino->removido           = registroOrigem->removido;
+    registroDestino->idServidor         = registroOrigem->idServidor;
+    registroDestino->salarioServidor    = registroOrigem->salarioServidor;
+    registroDestino->encadeamentoLista  = registroOrigem->encadeamentoLista;
+    registroDestino->tamanho            = registroOrigem->tamanho;
+
+    strcpy(registroDestino->telefoneServidor,registroOrigem->telefoneServidor);
+    strcpy(registroDestino->nomeServidor, registroOrigem->nomeServidor);
+    strcpy(registroDestino->cargoServidor, registroOrigem->cargoServidor);
+}
+
+/**
  * @brief  Adiciona todas as posições e tamanho dos regstros removidos a uma lista
  * @param  bin: Arquivo de onde se lerá os registros removidos.
  * @param  registrosRemovidos: Lista onde serão adicionados os dados dos registros removidos.
@@ -1208,10 +1226,6 @@ sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosR
     char arroba = '@';
     sRegistro** listaDeRegistros = NULL;
     int i = 0;
-    if(isIndice){
-        listaDeRegistros = malloc(sizeof(sRegistro));
-    }
-
 
     // Passa pelo arquivo inteiro procurando registros a serem removidos
     while (true) {
@@ -1241,12 +1255,14 @@ sRegistro** removerRegistro(int indexCampo, char* valorBusca, sLista* registrosR
             listaAdicionar(registrosRemovidos, posicao, registro->tamanho);
             if(isIndice){
                 listaDeRegistros = realloc(listaDeRegistros, (i + 1) * sizeof(sRegistro*));
-                listaDeRegistros[i++] = registro;
+                sRegistro* temp = criarRegistro(); 
+                copiarRegistro(temp, registro);
+                listaDeRegistros[i++] = temp;
 
             }
         }
     }
-
+    liberarRegistro(registro);
     return listaDeRegistros;
 }
 /**
@@ -1621,24 +1637,6 @@ void insercaoDeRegistros() {
 }
 
 //!###############################################################################################################################
-
-/**
- * @brief  Copia todos os campos de um registro para o outro
- * @param  registroDestino: Para onde será copiado
- * @param  registroOrigem: De onde será copiado
- * @retval None
- */
-void copiarRegistro(sRegistro* registroDestino, sRegistro* registroOrigem) {
-    registroDestino->removido           = registroOrigem->removido;
-    registroDestino->idServidor         = registroOrigem->idServidor;
-    registroDestino->salarioServidor    = registroOrigem->salarioServidor;
-    registroDestino->encadeamentoLista  = registroOrigem->encadeamentoLista;
-    registroDestino->tamanho            = registroOrigem->tamanho;
-
-    strcpy(registroDestino->telefoneServidor,registroOrigem->telefoneServidor);
-    strcpy(registroDestino->nomeServidor, registroOrigem->nomeServidor);
-    strcpy(registroDestino->cargoServidor, registroOrigem->cargoServidor);
-}
 
 /**
  * @brief  Atualiza o campo de um regsitro
@@ -2431,14 +2429,13 @@ void copiarIndice(sIndice* indiceDestino, sIndice* indiceOrigem) {
 
 /**
  * @brief  Realiza uma busca binária em uma lista de índices e retorna os indexes dos valores encontrados
- * @param  bin: Arquivo de índices
  * @param  listaDeIndices: Lista de índices onde se fará a busca binária
  * @param  valorBusca: Valor usado na busca
  * @param  numeroDeRegistros: Número de índices na lista de índices
  * @param  tamanhoDaLista: Variável de retorno: retorna o tamanho da lista de indexes retornada
- * @retval Retorna array do e indexes de todos osvalores encontrados na busca
+ * @retval Retorna array do e indexes de todos os valores encontrados na busca
  */
-int* buscaBinaria(FILE* bin, sIndice** listaDeIndices, char* valorBusca, int numeroDeRegistros, int* tamanhoDaLista) {
+int* buscaBinaria(sIndice** listaDeIndices, char* valorBusca, int numeroDeRegistros, int* tamanhoDaLista) {
     *tamanhoDaLista = 0;
 
     int final = numeroDeRegistros;
@@ -2642,7 +2639,7 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
 
     // Realiza busca binária 
     int tamanhoDaLista;
-    int* indexes = buscaBinaria(arquivoDeIndices, listaDeIndices, valorBusca, cabecalhoDeIndices->nroRegistros, &tamanhoDaLista);
+    int* indexes = buscaBinaria(listaDeIndices, valorBusca, cabecalhoDeIndices->nroRegistros, &tamanhoDaLista);
 
     // Cria variáveis para armazenar dados
     sIndice* indice = criarIndice();
@@ -2725,34 +2722,86 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     liberarPaginaDeDisco(paginaDeDisco);
     liberarRegistro(registro);
     free(paginasAcessadas);
-<<<<<<< HEAD
     fclose(bin);
     fclose(arquivoDeIndices);
-=======
     
     return qtdDePaginasAcessadas;
->>>>>>> origin/henrique
 }
 
 //!###############################################################################################################################
+/**
+ * @brief  Função que lê o arquivo de índices, carregando todos os índices para a ram
+ * @note   
+ * @param  binIndices: arquivo de índices
+ * @retval retorna um array de ponteiros de índices
+ */
+sIndice** recuperaIndices(FILE* binIndices){
+    int i = 0;
+    sIndice* indice = criarIndice();
+    sIndice** listaDeIndices = NULL;
 
-<<<<<<< HEAD
-void marcarRemovido(sIndice* indice){
-    if(indice != NULL){
-        indice->byteOffset = -1;
+    if(binIndices != NULL){
+        // Coloca o cursor no início do primeiro índice
+        fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+        // Enquanto houver índices no arquivo, lê e coloca-os no arrays
+        while(lerIndice(binIndices, indice)){
+            // Adiciona à lista
+            listaDeIndices = realloc(listaDeIndices, (i + 1) * sizeof(sIndice*));
+            sIndice* temp = criarIndice();
+            copiarIndice(temp, indice);
+            listaDeIndices[i++] = temp;
+        }
+    }
+    liberarIndice(indice);
+    return listaDeIndices;
+}
+
+/**
+ * @brief  Função que faz a remoção lógica do índice na ram
+ * @note   Essa funcão faz a remoção ao andar pelo array de índices, com base no array retornado pela
+ * busca binária, que nos dá os indexes dos índices a serem removidos
+ * @param  listaDeIndices: array de ponteiros de índices
+ * @param  indicesRemovidos: array com os indexes do índices a serem removidos
+ * @param  tamanhoDaLista: tamanho da lista de indices removidos
+ * @retval None
+ */
+void marcarRemovido(sIndice** listaDeIndices, int* indicesRemovidos, int tamanhoDaLista){
+    if(listaDeIndices != NULL && indicesRemovidos != NULL){
+        for(int i = 0; i < tamanhoDaLista; i++){
+            listaDeIndices[indicesRemovidos[i]]->byteOffset = -1;
+        }        
     }
 }
 
-void removeIndice(sRegistro** listaDeRegistros, sIndice** listaDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices){
+/**
+ * @brief  Função que faz a busca binária do índice do registro a ser removido e faz a remoção lógica
+ * desse índice
+ * @note   
+ * @param  listaDeRegistros: array de ponteiros de registros, guarda os registros a serem removidos
+ * @param  listaDeIndices: array de ponteiros de índices, guarda todos os índices que estavam no arquivo de índices
+ * @param  cabecalhoDeIndices: ponteiro para o cabeçalho de índices
+ * @param  *tamanhoDaLista: Variável usada como valor de retorno. Tamanho do lista criada para guardar quais índices serão removidos
+ * @retval None
+ */
+void removeIndice(sRegistro** listaDeRegistros, sIndice** listaDeIndices, sCabecalhoDeIndices* cabecalhoDeIndices, int *tamanhoDaLista){
+    int *listaDeIndexes = NULL;
+    *tamanhoDaLista = 1;
+
     if(listaDeRegistros != NULL && listaDeIndices != NULL){
-        for(int i = 0; listaDeRegistros[i] != NULL; i++){
-            
+        for(int i = 0; i < *tamanhoDaLista; i++){
+            // Faz a busca binária, realiza a remoção lógica dos índices e já libera memória dos registros
+            listaDeIndexes = buscaBinaria(listaDeIndices, listaDeRegistros[i]->nomeServidor, cabecalhoDeIndices->nroRegistros, tamanhoDaLista);
+            marcarRemovido(listaDeIndices, listaDeIndexes, *tamanhoDaLista);
             liberarRegistro(listaDeRegistros[i]);
+            free(listaDeIndexes);
         }
         free(listaDeRegistros);
+        return;
     }
+    // Caso não tenha nenhum registro para ser removido
+    *tamanhoDaLista = 0;
 }
-
+ 
 void removerListaDeIndices(){
 
     // Aloca memória para variáveis
@@ -2760,8 +2809,7 @@ void removerListaDeIndices(){
     char* nomeDoArquivoDeIndices = malloc(sizeof(char) * STRING_TAM_MAX);
     char* campoBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
     char* valorBusca = malloc(sizeof(char) * STRING_TAM_MAX); 
-    int n;
-    sRegistro** listaDeRegistros = NULL;
+    int n, tamanhoDaLista, nIndices;
 
     // Lê o nome do arquivo e a quantidade de registros a serem removidos
     scanf("%s %s %d", nomeDoArquivo, nomeDoArquivoDeIndices, &n);
@@ -2805,9 +2853,6 @@ void removerListaDeIndices(){
     // Coloca o cursor na posição do primeiro registro
     fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
-    // Busca por todos os registros já removidos no arquivo, e faz uma lista
-    sLista* registrosRemovidos = listaCriar();
-
     // Faz uma primeira leitura pra ver se há registros no arquivo, 
     // e imprime mensagem de erro, muda consistência do arquivo e libera memória caso não haja
     if (!contemRegistros(bin)) {
@@ -2824,7 +2869,6 @@ void removerListaDeIndices(){
         free(valorBusca);
         free(nomeDoArquivoDeIndices);
         liberarCabecalho(cabecalho);
-        listaLiberar(&registrosRemovidos);
         fclose(bin);
 
         return;
@@ -2865,8 +2909,13 @@ void removerListaDeIndices(){
         return;
     }
 
+    // Guarda a quantidade de índices original que há no arquivo
+    nIndices = cabecalhoDeIndices->nroRegistros;
+    // Coloca o cursor no início do primeiro índice
     fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
+    // Faz uma primeira leitura pra ver se há índices no arquivo, 
+    // e imprime mensagem de erro e libera memória caso não haja
     if(!contemIndice(binIndices)){
         printf("Falha no processamento do arquivo.\n");
 
@@ -2877,18 +2926,19 @@ void removerListaDeIndices(){
         free(nomeDoArquivoDeIndices);
         liberarCabecalho(cabecalho);
         liberarCabecalhoDeIndices(cabecalhoDeIndices);
-        listaLiberar(&registrosRemovidos);
         fclose(bin);
         fclose(binIndices);
 
         return;
     }
 
-    fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
+   
     // Recupera todos os índices para a ram e fecha o arquivo de índices
     sIndice** listaDeIndices = recuperaIndices(binIndices);
     fclose(binIndices);
 
+    // Busca por todos os registros já removidos no arquivo, e faz uma lista
+    sLista* registrosRemovidos = listaCriar();
     // Lê os registros buscando por removidos até acabar o arquivo
     while(localizarRegistrosRemovidos(bin, registrosRemovidos));
 
@@ -2907,14 +2957,19 @@ void removerListaDeIndices(){
         }
         int indexCampo = campoIndex(cabecalho, campoBusca);
 
-       listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, true);
-       //removeIndice();
+        // coloca no array os registros que serão removidos
+        listaDeRegistros = removerRegistro(indexCampo, valorBusca, registrosRemovidos, bin, true);
+        // faz a remoção lógica dos índices
+        removeIndice(listaDeRegistros, listaDeIndices, cabecalhoDeIndices, &tamanhoDaLista);
+        // diminui a quantidade de índices no arquivo
+        cabecalhoDeIndices->nroRegistros -= tamanhoDaLista;
     }
 
-
-
+    // Abre o arquivo de índices, agora no modo escrita
     FILE *novoBinIndices = fopen(nomeDoArquivoDeIndices, "wb");
     
+    // Verifica se o arquivo de índices foi aberto corretamente, caso não
+    // imprime uma mensagem de erro e libera memória alocada
     if(novoBinIndices == NULL){
         printf("Falha no processamento do arquivo.\n");
 
@@ -2940,11 +2995,11 @@ void removerListaDeIndices(){
         return; 
     }
 
-     // Escreve o cabeçalho
+     // Escreve o cabeçalho no arquivo de índices
     escreverCabecalhoDeIndice(novoBinIndices, cabecalhoDeIndices);
-
+    
     // Escreve os índices e já libera memória alocada
-    for (int i = 0; i < cabecalhoDeIndices->nroRegistros; i++) {
+    for (int i = 0; i < nIndices; i++) {
         escreverIndice(novoBinIndices, listaDeIndices[i]);
         liberarIndice(listaDeIndices[i]);
     }
@@ -2974,7 +3029,9 @@ void removerListaDeIndices(){
     fclose(bin);
     liberarCabecalhoDeIndices(cabecalhoDeIndices);
     free(nomeDoArquivoDeIndices);
-=======
+}
+//!###############################################################################################################################
+
 void compararBuscas(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, char* campoBusca, char* valorBusca) {
     // Realiza a funcionalidae 3
     printf("*** Realizando a busca sem o auxílio de índice\n");
@@ -2987,5 +3044,4 @@ void compararBuscas(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, ch
     // Compara as duas
     int diferenca = paginasAcessadaSemIndice - paginasAcessadaComIndice;
     printf("\nA diferença no número de páginas de disco acessadas: %d\n", diferenca);
->>>>>>> origin/henrique
 }
