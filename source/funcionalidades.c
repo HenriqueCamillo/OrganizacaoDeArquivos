@@ -2364,6 +2364,7 @@ void gerarArquivoDeIndices(char* nomeDoArquivo, char* nomeDoArquivoDeSaida) {
 
     // Libera memória alocada e fecha os arquivos
     liberarCabecalho(cabecalho);
+    liberarCabecalhoDeIndices(cabecalhoDeIndices);
     fclose(arquivoDeindices);
 
     // Imprime o binário
@@ -2758,12 +2759,8 @@ int buscarPeloArquivoDeIndices(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     liberarIndice(indice);
     liberarPaginaDeDisco(paginaDeDisco);
     liberarRegistro(registro);
-<<<<<<< HEAD
-    free(paginasAcessadas);
-=======
     liberarCabecalho(cabecalho);
     liberarCabecalhoDeIndices(cabecalhoDeIndices);
->>>>>>> origin/henrique
     fclose(bin);
     fclose(arquivoDeIndices);
     
@@ -2888,9 +2885,7 @@ void removerListaDeIndices(){
     }
 
     // Muda a consistência do arquivo
-    cabecalho->status = '0';
-    rewind(bin);
-    fwrite(&cabecalho->status, sizeof(char), 1, bin);
+    mudarConsistenciaDoArquivo(bin, '0');
 
     // Coloca o cursor na posição do primeiro registro
     fseek(bin, PAGINA_DE_DISCO_TAM, SEEK_SET);
@@ -2901,9 +2896,7 @@ void removerListaDeIndices(){
         printf("Falha no processamento do arquivo.\n");
         
         // Muda a consistência do arquivo
-        cabecalho->status = '1';
-        rewind(bin);
-        fwrite(&cabecalho->status, sizeof(char), 1, bin);
+        mudarConsistenciaDoArquivo(bin, '1');
         
         // Libera memória
         free(nomeDoArquivo);
@@ -2953,6 +2946,7 @@ void removerListaDeIndices(){
 
     // Guarda a quantidade de índices original que há no arquivo
     nIndices = cabecalhoDeIndices->nroRegistros;
+    cabecalhoDeIndices->status = '0';
     // Coloca o cursor no início do primeiro índice
     fseek(binIndices, PAGINA_DE_DISCO_TAM, SEEK_SET);
 
@@ -3048,15 +3042,13 @@ void removerListaDeIndices(){
     free(listaDeIndices);
 
     // Muda o status do cabeçalho
-    tornarArquivoConsistente(novoBinIndices);
+    mudarConsistenciaDoArquivo(novoBinIndices, '1');
 
     // Escreve o encadeamento da lista no arquivo
     escreverEncadeamento(bin, registrosRemovidos);
 
     // Muda a consistência do arquivo
-    cabecalho->status = '1';
-    rewind(bin);
-    fwrite(&cabecalho->status, sizeof(char), 1, bin);
+    mudarConsistenciaDoArquivo(bin, '1');
 
     // Libera memória alocada
     free(nomeDoArquivo);
@@ -3075,6 +3067,10 @@ void removerListaDeIndices(){
 //!###############################################################################################################################
 
 void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDeIndices, int n) {
+
+    char id[STRING_TAM_MAX], salario[STRING_TAM_MAX], str[STRING_TAM_MAX];
+    char *buffer = NULL, *linha = NULL, *nome = NULL, *telefone = NULL, *cargo = NULL;
+
     // Abre os arquivos
     FILE* bin = fopen(nomeDoArquivoBinario, "rb+");
     FILE* arquivoDeIndices = fopen(nomeDoArquivoDeIndices, "rb");
@@ -3098,7 +3094,6 @@ void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
 
         return;
     }
-
 
     // Torna o arquivo de dados inconsistente
     mudarConsistenciaDoArquivo(bin, '0');
@@ -3124,47 +3119,44 @@ void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     // Busca por todos os registros já removidos no arquivo, e faz uma lista
     sLista* registrosRemovidos = listaCriar();
     while(localizarRegistrosRemovidos(bin, registrosRemovidos));
-    
-    // Aloca memória
-    char* id        = malloc(sizeof(char) * STRING_TAM_MAX); 
-    char* salario   = malloc(sizeof(char) * STRING_TAM_MAX); 
-    char* telefone  = malloc(sizeof(char) * STRING_TAM_MAX);  
-    char* nome      = malloc(sizeof(char) * STRING_TAM_MAX); 
-    char* cargo     = malloc(sizeof(char) * STRING_TAM_MAX); 
-    char* temp      = malloc(sizeof(char) * BUFFER_TAM); 
-    char* buffer    = malloc(sizeof(char) * BUFFER_TAM); 
 
-    sRegistro* registro = criarRegistro();
+     sRegistro* registro = criarRegistro();
     // Realiza a funcionalidade n vezes, lendo sempre novas entradas
     for (int i = 0; i < n; i++) {
-        // Lê alguns parâmetros e coloca os que devem ser tratados em uma variável diferente
-        scanf("%s %s %s %[^\r\n]",id, salario, telefone, buffer);
 
-        // Trata de aspas na string do telefone
-        if (telefone[0] == '\"') {
-            sscanf(telefone, "\"%[^\"]\"", temp);
-            strcpy(telefone, temp);
+        //lê o id, salario e telefone e coloca o resto em uma única string para serem tratados depois
+        scanf("%s %s %s %m[^\r\n]", id, salario, str, &buffer);
+        linha = buffer;
+
+        // trata as aspas do telefone, se ele não for nulo
+        if (str[0] != 'N')
+            sscanf(str, "\"%m[^\"]\"", &telefone);
+        else{
+            telefone = malloc(strlen(str));
+            strcpy(telefone, "NULO");
         }
+        //Lê a primeira string contínua, para verificar se o nome é nulo
+        sscanf(linha, "%s", str);
 
-        // Lê a primeira string contínua do nome, parar verificar se é nulo
-        sscanf(buffer, "%s", nome);
-
-        // Se não for nulo, lê o valor que está entre aspas e atuliza o valor restante na variável "linha"
-        // Caso seja nulo, apenas atualiza a variável linha
-        if (strcmp(nome, "NULO")) {
-            sscanf(buffer, "\"%[^\"]\" %[^\r\n]", nome, temp);
-            strcpy(buffer, temp);
-        } else {
-            sscanf(buffer, "%*s %[^\r\n]", temp);
-            strcpy(buffer, temp);
+        /*Se o nome não for nulo, coloca o nome, sem as aspas, em outra variável e tira a parte já lida 
+        da string 'linha'. Caso o nome seja nulo, tira-se a parte do "NULO" da string 'linha' e deixa só o 
+        resto (o cargo)
+        */
+        if (str[0] != 'N')
+            sscanf(linha, "\"%m[^\"]\" %[^\r\n]", &nome, linha);
+        else{
+            sscanf(linha, "%*s %[^\r\n]", linha);
+            nome = malloc(strlen(str));
+            strcpy(nome, "NULO");
         }
-
-        // Faz o mesmo que foi feito para o nome, agora para o cargo
-        sscanf(buffer, "%s", cargo);
-        if (strcmp(nome, "NULO")) {
-            sscanf(buffer, "\"%[^\"]\"", cargo);
+        // Repete o que foi feito com o nome, só que agora com o cargo do servidor
+        sscanf(linha, "%s", str);
+        if (str[0] != 'N')
+            sscanf(linha, "\"%m[^\"]\"", &cargo);
+        else{
+            cargo = malloc(strlen(str));
+            strcpy(cargo, "NULO");
         }
-
         // Preenche registro com as informações necessárias e o insere
         preencherRegistro(registro, id, salario, telefone, nome, cargo);
         sIndice* temp = inserirRegistroERetornarIndice(bin, registro, registrosRemovidos);
@@ -3174,6 +3166,11 @@ void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
             listaDeIndices = realloc(listaDeIndices, (cabecalhoDeIndices->nroRegistros + 1) * sizeof(sIndice*));
             listaDeIndices[cabecalhoDeIndices->nroRegistros++] = temp;
         }
+
+
+        if(nome != NULL)        free(nome);
+        if(cargo != NULL)       free(cargo);
+        if(telefone != NULL)    free(telefone);
     }
 
     // Escreve o encadeamento no arquivo de dados
@@ -3197,11 +3194,10 @@ void inserirRegistrosComIndice(char* nomeDoArquivoBinario, char* nomeDoArquivoDe
     free(listaDeIndices);
 
     // Libera memória alocada
-    listaLiberar(&registrosRemovidos);
     free(buffer);
-    free(temp);
-    free(id);
-    free(salario);
+    listaLiberar(&registrosRemovidos);
+    liberarCabecalho(cabecalho);
+    liberarCabecalhoDeIndices(cabecalhoDeIndices);
     fclose(bin);
     fclose(arquivoDeIndices);
 
